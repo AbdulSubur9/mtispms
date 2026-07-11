@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import pagination_nav %}
+{% block title %}Payments - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Payments</h4>
+    {% if current_user.role != 'teacher' %}
+    <a href="{{ url_for('payments.create_payment') }}" class="btn brand-btn text-white btn-sm"><i class="bi bi-plus-lg"></i> Record Payment</a>
+    {% endif %}
+</div>
+
+<div class="card p-3 mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label small">Search</label>
+            <input type="text" name="q" class="form-control form-control-sm" placeholder="Receipt, student..." value="{{ search }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">Payment Type</label>
+            <select name="payment_type" class="form-select form-select-sm">
+                <option value="">All Types</option>
+                {% for t in payment_types %}
+                <option value="{{ t }}" {{ 'selected' if payment_type == t }}>{{ payment_type_labels[t] }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">From</label>
+            <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">To</label>
+            <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date }}">
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-sm brand-btn text-white w-100" type="submit">Filter</button>
+        </div>
+    </form>
+</div>
+
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr><th>Receipt #</th><th>Student</th><th>Type</th><th>Amount</th><th>Collector</th><th>Date</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                <tr>
+                    <td>{{ p.receipt_number }}</td>
+                    <td><a href="{{ url_for('students.view_student', student_id=p.student_id) }}">{{ p.student.full_name }}</a></td>
+                    <td>{{ p.payment_type_label }}</td>
+                    <td>{{ "%.2f"|format(p.amount) }}</td>
+                    <td>{{ p.collector.full_name }}</td>
+                    <td>{{ p.payment_date }}</td>
+                    <td>{% if p.is_void %}<span class="badge bg-danger">Void</span>{% else %}<span class="badge bg-success">Paid</span>{% endif %}</td>
+                    <td class="text-end">
+                        <a href="{{ url_for('payments.view_receipt', payment_id=p.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-receipt"></i></a>
+                        {% if not p.is_void and current_user.role in ['super_admin', 'school_admin'] %}
+                        <a href="{{ url_for('payments.void_payment', payment_id=p.id) }}" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle"></i></a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="text-center text-muted py-4">No payments found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="mt-3">{{ pagination_nav(pagination, 'payments.list_payments') }}</div>
+{% endblock %}

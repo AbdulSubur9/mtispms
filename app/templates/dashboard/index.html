@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - {{ app_name }}{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="mb-0">Welcome back, {{ current_user.first_name }}</h4>
+        <p class="text-muted mb-0 small">Here's what's happening across your Madrassa today.</p>
+    </div>
+    {% if schools %}
+    <form method="get" class="d-flex align-items-center gap-2">
+        <label class="small text-muted mb-0">School:</label>
+        <select name="school_id" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">All Schools</option>
+            {% for s in schools %}
+            <option value="{{ s.id }}" {{ 'selected' if selected_school_id == s.id }}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+    {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card d-flex align-items-center gap-3">
+            <div class="kpi-icon"><i class="bi bi-people-fill"></i></div>
+            <div>
+                <div class="kpi-value">{{ kpis.total_students }}</div>
+                <div class="kpi-label">Total Students</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card d-flex align-items-center gap-3">
+            <div class="kpi-icon" style="background:#2d6a4f;"><i class="bi bi-cash-coin"></i></div>
+            <div>
+                <div class="kpi-value">{{ "%.0f"|format(kpis.today_collections) }}</div>
+                <div class="kpi-label">Today's Collections</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card d-flex align-items-center gap-3">
+            <div class="kpi-icon" style="background:#40916c;"><i class="bi bi-calendar-check"></i></div>
+            <div>
+                <div class="kpi-value">{{ "%.0f"|format(kpis.monthly_collections) }}</div>
+                <div class="kpi-label">Monthly Collections</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card d-flex align-items-center gap-3">
+            <div class="kpi-icon" style="background:#d9534f;"><i class="bi bi-receipt"></i></div>
+            <div>
+                <div class="kpi-value">{{ "%.0f"|format(kpis.total_expenses) }}</div>
+                <div class="kpi-label">Total Expenses</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card d-flex align-items-center gap-3">
+            <div class="kpi-icon" style="background:#1b4332;"><i class="bi bi-wallet2"></i></div>
+            <div>
+                <div class="kpi-value">{{ "%.0f"|format(kpis.current_balance) }}</div>
+                <div class="kpi-label">Current Balance</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card d-flex align-items-center gap-3">
+            <div class="kpi-icon" style="background:#e76f51;"><i class="bi bi-exclamation-circle"></i></div>
+            <div>
+                <div class="kpi-value">{{ kpis.outstanding_fees }}</div>
+                <div class="kpi-label">Outstanding Fees</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card d-flex align-items-center gap-3">
+            <div class="kpi-icon" style="background:#52b788;"><i class="bi bi-check-circle"></i></div>
+            <div>
+                <div class="kpi-value">{{ kpis.students_paid }}</div>
+                <div class="kpi-label">Students Paid (this month)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card d-flex align-items-center gap-3">
+            <div class="kpi-icon" style="background:#9d0208;"><i class="bi bi-x-circle"></i></div>
+            <div>
+                <div class="kpi-value">{{ kpis.students_owing }}</div>
+                <div class="kpi-label">Students Owing</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-7">
+        <div class="card p-3">
+            <h6 class="mb-3">Payment Trends (last 14 days)</h6>
+            <canvas id="paymentTrendChart" height="110"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card p-3">
+            <h6 class="mb-3">Expense Breakdown by Category</h6>
+            <canvas id="expenseCategoryChart" height="140"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card p-3">
+            <h6 class="mb-3">Expense Trends (last 14 days)</h6>
+            <canvas id="expenseTrendChart" height="110"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card p-3">
+            <h6 class="mb-3">Recent Notifications</h6>
+            {% if notifications %}
+            <ul class="list-unstyled mb-0">
+                {% for n in notifications %}
+                <li class="py-2 border-bottom">
+                    <div class="fw-semibold small">{{ n.title }}</div>
+                    <div class="text-muted small">{{ n.message }}</div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted small mb-0">No notifications yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const paymentTrendLabels = {{ payment_trend | map(attribute=0) | map('string') | list | tojson }};
+const paymentTrendData = {{ payment_trend | map(attribute=1) | list | tojson }};
+const expenseTrendLabels = {{ expense_trend | map(attribute=0) | map('string') | list | tojson }};
+const expenseTrendData = {{ expense_trend | map(attribute=1) | list | tojson }};
+const categoryLabels = {{ category_breakdown | map(attribute=0) | list | tojson }};
+const categoryData = {{ category_breakdown | map(attribute=1) | list | tojson }};
+
+new Chart(document.getElementById('paymentTrendChart'), {
+    type: 'line',
+    data: { labels: paymentTrendLabels, datasets: [{ label: 'Collections', data: paymentTrendData, borderColor: '#2d6a4f', backgroundColor: 'rgba(45,106,79,0.1)', fill: true, tension: 0.35 }] },
+    options: { plugins: { legend: { display: false } } }
+});
+
+new Chart(document.getElementById('expenseTrendChart'), {
+    type: 'bar',
+    data: { labels: expenseTrendLabels, datasets: [{ label: 'Expenses', data: expenseTrendData, backgroundColor: '#d9534f' }] },
+    options: { plugins: { legend: { display: false } } }
+});
+
+new Chart(document.getElementById('expenseCategoryChart'), {
+    type: 'pie',
+    data: { labels: categoryLabels, datasets: [{ data: categoryData, backgroundColor: ['#1b4332','#2d6a4f','#40916c','#52b788','#74c69d','#95d5b2','#d9534f','#e76f51','#9d0208'] }] },
+});
+</script>
+{% endblock %}

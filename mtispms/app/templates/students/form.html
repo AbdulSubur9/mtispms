@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import render_field %}
+{% block title %}{{ title }} - {{ app_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-3">{{ title }}</h4>
+<div class="card p-4" style="max-width: 720px;">
+    <form method="POST" enctype="multipart/form-data" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="row">
+            <div class="col-md-6">{{ render_field(form.first_name) }}</div>
+            <div class="col-md-6">{{ render_field(form.last_name) }}</div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">{{ render_field(form.gender) }}</div>
+            <div class="col-md-6">{{ render_field(form.date_of_birth) }}</div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">{{ render_field(form.guardian_name) }}</div>
+            <div class="col-md-6">{{ render_field(form.guardian_contact) }}</div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">{{ render_field(form.class_id) }}</div>
+            <div class="col-md-6">{{ render_field(form.admission_date) }}</div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">{{ render_field(form.status) }}</div>
+            <div class="col-md-6">{{ render_field(form.photo) }}</div>
+        </div>
+        {% if student and student.photo %}
+        <img src="{{ url_for('static', filename=student.photo) }}" class="rounded mb-3" style="width: 80px; height: 80px; object-fit: cover;">
+        {% endif %}
+        <div class="d-flex gap-2">
+            {{ form.submit(class="btn brand-btn text-white") }}
+            <a href="{{ url_for('students.list_students') }}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

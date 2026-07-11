@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Classes - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Classes</h4>
+    {% if current_user.role != 'teacher' %}
+    <a href="{{ url_for('classes.create_class') }}" class="btn brand-btn text-white btn-sm"><i class="bi bi-plus-lg"></i> Add Class</a>
+    {% endif %}
+</div>
+<div class="row g-3">
+    {% for c in classes %}
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h6 class="mb-1">{{ c.name }}</h6>
+            <p class="text-muted small mb-2">{{ c.description or 'No description' }}</p>
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="badge bg-light text-dark border">{{ c.student_count }} students</span>
+                <a href="{{ url_for('classes.view_class', class_id=c.id) }}" class="btn btn-sm btn-outline-secondary">View</a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <p class="text-muted">No classes yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import render_field %}
+{% block title %}{{ title }} - {{ app_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-3">{{ title }}</h4>
+<div class="card p-4" style="max-width: 640px;">
+    <form method="POST" enctype="multipart/form-data" novalidate>
+        {{ form.hidden_tag() }}
+        {{ render_field(form.category) }}
+        {{ render_field(form.amount) }}
+        {{ render_field(form.purpose) }}
+        <div class="row">
+            <div class="col-md-6">{{ render_field(form.paid_to) }}</div>
+            <div class="col-md-6">{{ render_field(form.approved_by) }}</div>
+        </div>
+        {{ render_field(form.expense_date) }}
+        {{ render_field(form.remarks) }}
+        {{ render_field(form.receipt_file) }}
+        {% if expense and expense.receipt_file %}
+        <p class="small"><a href="{{ url_for('static', filename=expense.receipt_file) }}" target="_blank">View current receipt file</a></p>
+        {% endif %}
+        <div class="d-flex gap-2">
+            {{ form.submit(class="btn brand-btn text-white") }}
+            <a href="{{ url_for('expenses.list_expenses') }}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

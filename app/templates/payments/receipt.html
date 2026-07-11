@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Receipt {{ payment.receipt_number }} - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Payment Receipt</h4>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('payments.download_receipt_pdf', payment_id=payment.id) }}" class="btn brand-btn text-white btn-sm"><i class="bi bi-printer"></i> Print / Download PDF</a>
+        <a href="{{ url_for('payments.list_payments') }}" class="btn btn-outline-secondary btn-sm">Back</a>
+    </div>
+</div>
+
+<div class="receipt-box">
+    <div class="text-center mb-3">
+        <h5 class="mb-0">{{ payment.school.name }}</h5>
+        <p class="text-muted small mb-0">Official Payment Receipt</p>
+    </div>
+    <table class="table table-sm">
+        <tr><th>Receipt No.</th><td>{{ payment.receipt_number }}</td></tr>
+        <tr><th>Date</th><td>{{ payment.payment_date }}</td></tr>
+        <tr><th>Student</th><td>{{ payment.student.full_name }} ({{ payment.student.student_id }})</td></tr>
+        <tr><th>Payment Type</th><td>{{ payment.payment_type_label }}</td></tr>
+        <tr><th>Amount</th><td class="fw-bold">{{ "%.2f"|format(payment.amount) }}</td></tr>
+        <tr><th>Collected By</th><td>{{ payment.collector.full_name }}</td></tr>
+        <tr><th>Remarks</th><td>{{ payment.remarks or '-' }}</td></tr>
+        {% if payment.is_void %}
+        <tr><th class="text-danger">Status</th><td class="text-danger fw-bold">VOIDED - {{ payment.void_reason }}</td></tr>
+        {% endif %}
+    </table>
+    <p class="text-center text-muted small mt-3">Thank you for your payment.</p>
+</div>
+{% endblock %}

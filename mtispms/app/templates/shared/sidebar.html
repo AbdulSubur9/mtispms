@@ -1,0 +1,42 @@
+<aside class="app-sidebar" id="appSidebar">
+    <div class="sidebar-brand">
+        <i class="bi bi-mosque"></i>
+        <span>MT-ISPMS</span>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('dashboard.index') }}" class="nav-link {{ 'active' if request.endpoint == 'dashboard.index' }}">
+            <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('students.list_students') }}" class="nav-link {{ 'active' if request.blueprint == 'students' }}">
+            <i class="bi bi-people"></i><span>Students</span>
+        </a>
+        <a href="{{ url_for('classes.list_classes') }}" class="nav-link {{ 'active' if request.blueprint == 'classes' }}">
+            <i class="bi bi-collection"></i><span>Classes</span>
+        </a>
+        <a href="{{ url_for('payments.list_payments') }}" class="nav-link {{ 'active' if request.blueprint == 'payments' }}">
+            <i class="bi bi-cash-coin"></i><span>Payments</span>
+        </a>
+        {% if current_user.role in ['super_admin', 'school_admin', 'accountant'] %}
+        <a href="{{ url_for('expenses.list_expenses') }}" class="nav-link {{ 'active' if request.blueprint == 'expenses' }}">
+            <i class="bi bi-receipt"></i><span>Expenses</span>
+        </a>
+        {% endif %}
+        <a href="{{ url_for('reports.index') }}" class="nav-link {{ 'active' if request.blueprint == 'reports' }}">
+            <i class="bi bi-bar-chart-line"></i><span>Reports</span>
+        </a>
+        {% if current_user.role in ['super_admin', 'school_admin'] %}
+        <div class="sidebar-heading">Administration</div>
+        {% if current_user.role == 'super_admin' %}
+        <a href="{{ url_for('admin.list_schools') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.list_schools' }}">
+            <i class="bi bi-building"></i><span>Schools</span>
+        </a>
+        {% endif %}
+        <a href="{{ url_for('admin.list_users') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.list_users' }}">
+            <i class="bi bi-person-badge"></i><span>Users</span>
+        </a>
+        <a href="{{ url_for('admin.audit_log') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.audit_log' }}">
+            <i class="bi bi-journal-text"></i><span>Audit Log</span>
+        </a>
+        {% endif %}
+    </nav>
+</aside>

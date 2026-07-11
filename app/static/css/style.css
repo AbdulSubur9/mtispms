@@ -1,0 +1,148 @@
+:root {
+    --sidebar-width: 250px;
+    --brand-color: #1b4332;
+    --brand-light: #2d6a4f;
+    --accent: #40916c;
+    --bg-soft: #f6f8f6;
+    --card-radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-soft);
+    margin: 0;
+}
+
+[data-bs-theme="dark"] body { background: #101512; }
+
+.app-shell { display: flex; min-height: 100vh; }
+
+.app-sidebar {
+    width: var(--sidebar-width);
+    background: linear-gradient(180deg, var(--brand-color), #10261c);
+    color: #fff;
+    position: fixed;
+    top: 0; bottom: 0; left: 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    transition: transform 0.25s ease;
+}
+
+.sidebar-brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 22px 20px;
+    font-weight: 700; font-size: 1.15rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.sidebar-nav { padding: 14px 10px; overflow-y: auto; }
+
+.sidebar-nav .nav-link {
+    color: rgba(255,255,255,0.75);
+    padding: 10px 14px;
+    border-radius: 10px;
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 4px;
+    font-size: 0.92rem;
+    font-weight: 500;
+}
+
+.sidebar-nav .nav-link:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.sidebar-nav .nav-link.active { background: var(--accent); color: #fff; }
+.sidebar-heading {
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    padding: 14px 14px 6px;
+}
+
+.app-main { margin-left: var(--sidebar-width); flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+.app-topbar {
+    background: var(--bs-body-bg);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 16px;
+    position: sticky; top: 0; z-index: 900;
+}
+
+.topbar-search {
+    flex: 1; max-width: 420px;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg-soft);
+    border-radius: 10px;
+    padding: 8px 14px;
+}
+[data-bs-theme="dark"] .topbar-search { background: #1b2320; }
+.topbar-search input { border: 0; background: transparent; outline: none; width: 100%; color: inherit; }
+
+.topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+.avatar-circle {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--brand-light); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700;
+}
+
+.notif-badge { position: absolute; top: -4px; right: -4px; font-size: 0.6rem; }
+
+.app-content { padding: 24px; }
+
+.flash-container { margin-bottom: 16px; }
+
+.kpi-card {
+    border-radius: var(--card-radius);
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    padding: 18px 20px;
+    background: var(--bs-body-bg);
+}
+.kpi-card .kpi-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; color: #fff;
+    background: var(--accent);
+}
+.kpi-card .kpi-value { font-size: 1.6rem; font-weight: 700; }
+.kpi-card .kpi-label { color: var(--bs-secondary-color); font-size: 0.82rem; }
+
+.card, .table-card {
+    border-radius: var(--card-radius);
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+.brand-btn { background: var(--brand-color); border-color: var(--brand-color); }
+.brand-btn:hover { background: var(--brand-light); border-color: var(--brand-light); }
+
+.auth-wrapper {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--brand-color), #081c14);
+    padding: 20px;
+}
+.auth-card {
+    background: var(--bs-body-bg);
+    border-radius: 18px;
+    padding: 40px;
+    width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+
+.receipt-box {
+    max-width: 500px; margin: 0 auto;
+    border: 2px dashed var(--brand-color);
+    border-radius: 12px;
+    padding: 24px;
+}
+
+@media (max-width: 991px) {
+    .app-sidebar { transform: translateX(-100%); }
+    .app-sidebar.show { transform: translateX(0); }
+    .app-main { margin-left: 0; }
+}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Schools - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Schools</h4>
+    <a href="{{ url_for('admin.create_school') }}" class="btn brand-btn text-white btn-sm"><i class="bi bi-plus-lg"></i> Add School</a>
+</div>
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+            <thead class="table-light"><tr><th>Code</th><th>Name</th><th>Phone</th><th>Balance</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                {% for s in schools %}
+                <tr>
+                    <td>{{ s.code }}</td>
+                    <td>{{ s.name }}</td>
+                    <td>{{ s.phone or '-' }}</td>
+                    <td>{{ "%.2f"|format(s.current_balance) }}</td>
+                    <td><span class="badge bg-{{ 'success' if s.is_active else 'secondary' }}">{{ 'Active' if s.is_active else 'Inactive' }}</span></td>
+                    <td class="text-end"><a href="{{ url_for('admin.edit_school', school_id=s.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-4">No schools yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

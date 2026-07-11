@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Search Results - {{ app_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-3">Search Results for "{{ q }}"</h4>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6>Students ({{ results.students|length }})</h6>
+            {% for s in results.students %}
+            <div class="py-1 border-bottom"><a href="{{ url_for('students.view_student', student_id=s.id) }}">{{ s.student_id }} - {{ s.full_name }}</a></div>
+            {% else %}<p class="text-muted small">No matches.</p>{% endfor %}
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6>Payments ({{ results.payments|length }})</h6>
+            {% for p in results.payments %}
+            <div class="py-1 border-bottom"><a href="{{ url_for('payments.view_receipt', payment_id=p.id) }}">{{ p.receipt_number }} - {{ "%.2f"|format(p.amount) }}</a></div>
+            {% else %}<p class="text-muted small">No matches.</p>{% endfor %}
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6>Expenses ({{ results.expenses|length }})</h6>
+            {% for e in results.expenses %}
+            <div class="py-1 border-bottom">{{ e.reference_number }} - {{ e.purpose }}</div>
+            {% else %}<p class="text-muted small">No matches.</p>{% endfor %}
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6>Collectors ({{ results.collectors|length }})</h6>
+            {% for c in results.collectors %}
+            <div class="py-1 border-bottom">{{ c.full_name }} ({{ c.role_label }})</div>
+            {% else %}<p class="text-muted small">No matches.</p>{% endfor %}
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6>Classes ({{ results.classes|length }})</h6>
+            {% for c in results.classes %}
+            <div class="py-1 border-bottom"><a href="{{ url_for('classes.view_class', class_id=c.id) }}">{{ c.name }}</a></div>
+            {% else %}<p class="text-muted small">No matches.</p>{% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

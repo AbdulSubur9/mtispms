@@ -1,0 +1,23 @@
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-3">
+        <label class="form-label small">Period</label>
+        <select name="period" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="daily" {{ 'selected' if period == 'daily' }}>Daily</option>
+            <option value="weekly" {{ 'selected' if period == 'weekly' }}>Weekly</option>
+            <option value="monthly" {{ 'selected' if period == 'monthly' }}>Monthly</option>
+            <option value="yearly" {{ 'selected' if period == 'yearly' }}>Yearly</option>
+            <option value="custom" {{ 'selected' if period == 'custom' }}>Custom Range</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small">From</label>
+        <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date }}">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small">To</label>
+        <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date }}">
+    </div>
+    <div class="col-md-3">
+        <button class="btn btn-sm brand-btn text-white w-100" type="submit">Apply</button>
+    </div>
+</form>

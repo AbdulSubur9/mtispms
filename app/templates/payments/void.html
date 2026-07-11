@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import render_field %}
+{% block title %}Void Payment - {{ app_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-3">Void Payment {{ payment.receipt_number }}</h4>
+<div class="card p-4" style="max-width: 600px;">
+    <p class="text-muted small">Voiding a payment marks it as invalid. It will remain in records for audit purposes but excluded from totals.</p>
+    <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        {{ render_field(form.void_reason) }}
+        <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-danger text-white") }}
+            <a href="{{ url_for('payments.list_payments') }}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
