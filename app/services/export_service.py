@@ -71,7 +71,67 @@ def export_pdf_table(title, headers, rows, subtitle=None):
     return mem
 
 
-def generate_receipt_pdf(school, student, payment, collector):
+def generate_application_pdf(school, application):
+    mem = io.BytesIO()
+    doc = SimpleDocTemplate(mem, pagesize=letter, topMargin=15 * mm, bottomMargin=15 * mm)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle("Title", parent=styles["Heading1"], fontSize=16, alignment=1)
+    section_style = ParagraphStyle("Section", parent=styles["Heading3"], fontSize=11, spaceBefore=14, spaceAfter=6,
+                                    textColor=colors.HexColor("#1b4332"))
+    normal = styles["Normal"]
+
+    elements = [
+        Paragraph(school.name if school else "Madrassa", title_style),
+        Paragraph("Student Admission Application Form", ParagraphStyle("sub", parent=normal, alignment=1, spaceAfter=6)),
+    ]
+    if school and school.address:
+        elements.append(Paragraph(school.address, ParagraphStyle("addr", parent=normal, alignment=1, fontSize=9, textColor=colors.grey)))
+    elements.append(Spacer(1, 14))
+
+    def kv_table(rows):
+        t = Table(rows, colWidths=[130, 350])
+        t.setStyle(TableStyle([
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.lightgrey),
+        ]))
+        return t
+
+    elements.append(Paragraph("Student Information", section_style))
+    elements.append(kv_table([
+        ["Full Name:", application.full_name],
+        ["Gender:", (application.gender or "-").title()],
+        ["Date of Birth:", application.date_of_birth.strftime("%d %b %Y") if application.date_of_birth else "-"],
+        ["Previous School:", application.previous_school or "-"],
+        ["Address:", application.address or "-"],
+    ]))
+
+    elements.append(Paragraph("Parent / Guardian Information", section_style))
+    elements.append(kv_table([
+        ["Name:", application.guardian_name],
+        ["Phone:", application.guardian_phone],
+        ["Occupation:", application.guardian_occupation or "-"],
+        ["Address:", application.guardian_address or "-"],
+    ]))
+
+    elements.append(Paragraph("Emergency Contact", section_style))
+    elements.append(kv_table([
+        ["Name:", application.emergency_contact_name or "-"],
+        ["Phone:", application.emergency_contact_phone or "-"],
+        ["Relationship:", application.emergency_contact_relationship or "-"],
+    ]))
+
+    elements.append(Spacer(1, 24))
+    elements.append(Paragraph(f"Application Date: {application.application_date}", normal))
+    elements.append(Paragraph(f"Status: {application.status_label}", normal))
+    elements.append(Spacer(1, 36))
+    elements.append(Paragraph("_____________________________", normal))
+    elements.append(Paragraph("Parent / Guardian Signature", ParagraphStyle("sig", parent=normal, fontSize=9, textColor=colors.grey)))
+
+    doc.build(elements)
+    mem.seek(0)
+    return mem
     mem = io.BytesIO()
     doc = SimpleDocTemplate(mem, pagesize=letter, topMargin=15 * mm, bottomMargin=15 * mm)
     styles = getSampleStyleSheet()

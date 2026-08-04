@@ -7,15 +7,41 @@
         <a href="{{ url_for('dashboard.index') }}" class="nav-link {{ 'active' if request.endpoint == 'dashboard.index' }}">
             <i class="bi bi-speedometer2"></i><span>Dashboard</span>
         </a>
-        <a href="{{ url_for('students.list_students') }}" class="nav-link {{ 'active' if request.blueprint == 'students' }}">
+
+        {% if current_user.role == 'teacher' %}
+        {# ---------------- Teacher Portal: classes & attendance only, no financial/admin access ---------------- #}
+        <a href="{{ url_for('classes.list_classes') }}" class="nav-link {{ 'active' if request.blueprint == 'classes' }}">
+            <i class="bi bi-collection"></i><span>My Classes</span>
+        </a>
+        <a href="{{ url_for('attendance.take_attendance') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('attendance.') }}">
+            <i class="bi bi-clipboard-check"></i><span>Attendance</span>
+        </a>
+
+        {% else %}
+        <a href="{{ url_for('students.list_students') }}" class="nav-link {{ 'active' if request.blueprint == 'students' and request.endpoint != 'students.students_owing' }}">
             <i class="bi bi-people"></i><span>Students</span>
         </a>
+        {% if current_user.role in ['super_admin', 'school_admin', 'accountant', 'collector'] %}
+        <a href="{{ url_for('students.students_owing') }}" class="nav-link {{ 'active' if request.endpoint == 'students.students_owing' }}">
+            <i class="bi bi-exclamation-circle"></i><span>Students Owing</span>
+        </a>
+        {% endif %}
         <a href="{{ url_for('classes.list_classes') }}" class="nav-link {{ 'active' if request.blueprint == 'classes' }}">
             <i class="bi bi-collection"></i><span>Classes</span>
         </a>
+        {% if current_user.role in ['super_admin', 'school_admin'] %}
+        <a href="{{ url_for('attendance.take_attendance') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('attendance.') }}">
+            <i class="bi bi-clipboard-check"></i><span>Attendance</span>
+        </a>
+        {% endif %}
         <a href="{{ url_for('payments.list_payments') }}" class="nav-link {{ 'active' if request.blueprint == 'payments' }}">
             <i class="bi bi-cash-coin"></i><span>Payments</span>
         </a>
+        {% if current_user.role in ['super_admin', 'school_admin'] %}
+        <a href="{{ url_for('applications.list_applications') }}" class="nav-link {{ 'active' if request.blueprint == 'applications' }}">
+            <i class="bi bi-file-earmark-person"></i><span>Applications</span>
+        </a>
+        {% endif %}
         {% if current_user.role in ['super_admin', 'school_admin', 'accountant'] %}
         <a href="{{ url_for('expenses.list_expenses') }}" class="nav-link {{ 'active' if request.blueprint == 'expenses' }}">
             <i class="bi bi-receipt"></i><span>Expenses</span>
@@ -24,6 +50,13 @@
         <a href="{{ url_for('reports.index') }}" class="nav-link {{ 'active' if request.blueprint == 'reports' }}">
             <i class="bi bi-bar-chart-line"></i><span>Reports</span>
         </a>
+        {% endif %}
+
+        <a href="{{ url_for('notifications.center') }}" class="nav-link {{ 'active' if request.blueprint == 'notifications' }}">
+            <i class="bi bi-bell"></i><span>Notifications</span>
+            {% if unread_notifications %}<span class="badge bg-danger rounded-pill ms-auto">{{ unread_notifications }}</span>{% endif %}
+        </a>
+
         {% if current_user.role in ['super_admin', 'school_admin'] %}
         <div class="sidebar-heading">Administration</div>
         {% if current_user.role == 'super_admin' %}
@@ -33,6 +66,9 @@
         {% endif %}
         <a href="{{ url_for('admin.list_users') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.list_users' }}">
             <i class="bi bi-person-badge"></i><span>Users</span>
+        </a>
+        <a href="{{ url_for('admin.list_payment_types') }}" class="nav-link {{ 'active' if request.endpoint and 'payment_type' in request.endpoint }}">
+            <i class="bi bi-tags"></i><span>Payment Types</span>
         </a>
         <a href="{{ url_for('admin.audit_log') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.audit_log' }}">
             <i class="bi bi-journal-text"></i><span>Audit Log</span>

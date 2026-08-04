@@ -2,11 +2,12 @@ from datetime import date, datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, abort
 from flask_login import login_required, current_user
 from app.extensions import db
-from app.models import Payment, Student, AuditLog, Notification, Receipt
+from app.models import Payment, Student, AuditLog, Notification, Receipt, SchoolPaymentType
 from app.models.user import Role
 from app.payments.forms import PaymentForm, VoidPaymentForm
 from app.utils.decorators import write_access_required, roles_required
 from app.utils.helpers import scope_query_to_school, current_school_id, is_super_admin
+from app.utils.db_safety import safe_commit
 from app.services.export_service import generate_receipt_pdf
 
 payments_bp = Blueprint("payments", __name__, template_folder="../templates/payments")
@@ -17,6 +18,15 @@ def _populate_student_choices(form, school_id):
     if school_id is not None:
         q = q.filter_by(school_id=school_id)
     form.student_id.choices = [(s.id, f"{s.student_id} - {s.full_name}") for s in q.order_by(Student.first_name).all()]
+
+
+def _populate_custom_type_choices(form, school_id):
+    q = SchoolPaymentType.query.filter_by(is_active=True)
+    if school_id is not None:
+        q = q.filter_by(school_id=school_id)
+    form.custom_payment_type_id.choices = [(0, "-- None / Use standard type above --")] + [
+        (t.id, f"{t.name} ({t.frequency_label})") for t in q.order_by(SchoolPaymentType.name).all()
+    ]
 
 
 @payments_bp.route("/")
@@ -30,6 +40,8 @@ def list_payments():
 
     query = scope_query_to_school(Payment.query, Payment)
     if current_user.role == Role.COLLECTOR:
+        # Collectors only ever see the payments *they personally* collected,
+        # not every payment across their school.
         query = query.filter(Payment.collector_id == current_user.id)
 
     if search:
@@ -57,6 +69,20 @@ def list_payments():
     )
 
 
+@payments_bp.route("/collect")
+@login_required
+@write_access_required
+def collect():
+    """The fast payment-collection screen: live AJAX student search, then an
+    inline payment form for whichever student the collector picks. Replaces
+    having to scroll a long dropdown of every student in the school."""
+    school_id = current_school_id()
+    if school_id is None:
+        flash("Select a school context first.", "warning")
+        return redirect(url_for("payments.list_payments"))
+    return render_template("payments/collect.html", school_id=school_id)
+
+
 @payments_bp.route("/create", methods=["GET", "POST"])
 @login_required
 @write_access_required
@@ -68,10 +94,16 @@ def create_payment():
 
     form = PaymentForm()
     _populate_student_choices(form, school_id)
+    _populate_custom_type_choices(form, school_id)
+
+    preselected_student_id = request.args.get("student_id", type=int)
     if request.method == "GET":
         form.payment_date.data = date.today()
+        if preselected_student_id:
+            form.student_id.data = preselected_student_id
 
     if form.validate_on_submit():
+        custom_type_id = form.custom_payment_type_id.data or None
         payment = Payment(
             school_id=school_id,
             student_id=form.student_id.data,
@@ -79,11 +111,14 @@ def create_payment():
             receipt_number=Payment.generate_receipt_number(school_id),
             amount=form.amount.data,
             payment_type=form.payment_type.data,
+            payment_type_id=custom_type_id,
             payment_date=form.payment_date.data,
             remarks=form.remarks.data,
         )
         db.session.add(payment)
-        db.session.commit()
+
+        if not safe_commit(log_context=f"create_payment school={school_id}"):
+            return render_template("payments/form.html", form=form, title="Record Payment")
 
         db.session.add(
             Notification(
@@ -93,7 +128,7 @@ def create_payment():
                 category="payment_success",
             )
         )
-        db.session.commit()
+        safe_commit(log_context="payment notification")
 
         AuditLog.log(
             "payment_created", description=f"Payment {payment.receipt_number} recorded", entity_type="payment",
@@ -127,7 +162,7 @@ def download_receipt_pdf(payment_id):
         existing.printed_count += 1
     else:
         db.session.add(Receipt(payment_id=payment.id, printed_count=1))
-    db.session.commit()
+    safe_commit(log_context=f"receipt pdf {payment_id}")
 
     return send_file(mem, as_attachment=True, download_name=f"{payment.receipt_number}.pdf", mimetype="application/pdf")
 
@@ -146,12 +181,12 @@ def void_payment(payment_id):
         payment.voided_by_id = current_user.id
         payment.voided_at = datetime.utcnow()
         payment.void_reason = form.void_reason.data
-        db.session.commit()
-        AuditLog.log(
-            "payment_deleted", description=f"Payment {payment.receipt_number} voided: {form.void_reason.data}",
-            entity_type="payment", entity_id=payment.id, user=current_user,
-        )
-        flash("Payment voided.", "info")
-        return redirect(url_for("payments.list_payments"))
+        if safe_commit(log_context=f"void_payment {payment_id}"):
+            AuditLog.log(
+                "payment_deleted", description=f"Payment {payment.receipt_number} voided: {form.void_reason.data}",
+                entity_type="payment", entity_id=payment.id, user=current_user,
+            )
+            flash("Payment voided.", "info")
+            return redirect(url_for("payments.list_payments"))
 
     return render_template("payments/void.html", form=form, payment=payment)

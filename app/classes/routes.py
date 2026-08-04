@@ -6,6 +6,7 @@ from app.models.user import Role
 from app.classes.forms import ClassRoomForm
 from app.utils.decorators import write_access_required
 from app.utils.helpers import scope_query_to_school, current_school_id, is_super_admin
+from app.utils.db_safety import safe_commit
 
 classes_bp = Blueprint("classes", __name__, template_folder="../templates/classes")
 
@@ -17,10 +18,20 @@ def _populate_teacher_choices(form, school_id):
     form.teacher_id.choices = [(0, "-- Unassigned --")] + [(u.id, u.full_name) for u in q.order_by(User.first_name).all()]
 
 
+def _check_teacher_owns_class(classroom):
+    """A teacher may only view/manage classes assigned to them - never every
+    class in the school (which would leak other teachers' rosters and,
+    indirectly, other students' data to someone with no need to see it)."""
+    if current_user.role == Role.TEACHER and classroom.teacher_id != current_user.id:
+        abort(403)
+
+
 @classes_bp.route("/")
 @login_required
 def list_classes():
     query = scope_query_to_school(ClassRoom.query, ClassRoom)
+    if current_user.role == Role.TEACHER:
+        query = query.filter(ClassRoom.teacher_id == current_user.id)
     classes = query.order_by(ClassRoom.name).all()
     return render_template("classes/list.html", classes=classes)
 
@@ -31,6 +42,7 @@ def view_class(class_id):
     classroom = ClassRoom.query.get_or_404(class_id)
     if not is_super_admin() and classroom.school_id != current_school_id():
         abort(403)
+    _check_teacher_owns_class(classroom)
     students = classroom.students.order_by(Student.first_name).all()
     return render_template("classes/view.html", classroom=classroom, students=students)
 
@@ -39,6 +51,8 @@ def view_class(class_id):
 @login_required
 @write_access_required
 def create_class():
+    if current_user.role == Role.TEACHER:
+        abort(403)
     school_id = current_school_id()
     if school_id is None:
         flash("Select a school context first.", "warning")
@@ -55,13 +69,13 @@ def create_class():
             teacher_id=form.teacher_id.data or None,
         )
         db.session.add(classroom)
-        db.session.commit()
-        AuditLog.log(
-            "class_created", description=f"Class {classroom.name} created", entity_type="class",
-            entity_id=classroom.id, user=current_user,
-        )
-        flash("Class created successfully.", "success")
-        return redirect(url_for("classes.list_classes"))
+        if safe_commit(log_context=f"create_class school={school_id}"):
+            AuditLog.log(
+                "class_created", description=f"Class {classroom.name} created", entity_type="class",
+                entity_id=classroom.id, user=current_user,
+            )
+            flash("Class created successfully.", "success")
+            return redirect(url_for("classes.list_classes"))
 
     return render_template("classes/form.html", form=form, title="Add Class")
 
@@ -70,6 +84,8 @@ def create_class():
 @login_required
 @write_access_required
 def edit_class(class_id):
+    if current_user.role == Role.TEACHER:
+        abort(403)
     classroom = ClassRoom.query.get_or_404(class_id)
     if not is_super_admin() and classroom.school_id != current_school_id():
         abort(403)
@@ -83,13 +99,13 @@ def edit_class(class_id):
         classroom.name = form.name.data.strip()
         classroom.description = form.description.data
         classroom.teacher_id = form.teacher_id.data or None
-        db.session.commit()
-        AuditLog.log(
-            "class_updated", description=f"Class {classroom.name} updated", entity_type="class",
-            entity_id=classroom.id, user=current_user,
-        )
-        flash("Class updated successfully.", "success")
-        return redirect(url_for("classes.list_classes"))
+        if safe_commit(log_context=f"edit_class {class_id}"):
+            AuditLog.log(
+                "class_updated", description=f"Class {classroom.name} updated", entity_type="class",
+                entity_id=classroom.id, user=current_user,
+            )
+            flash("Class updated successfully.", "success")
+            return redirect(url_for("classes.list_classes"))
 
     return render_template("classes/form.html", form=form, title="Edit Class", classroom=classroom)
 
@@ -106,9 +122,13 @@ def delete_class(class_id):
 
     name = classroom.name
     db.session.delete(classroom)
-    db.session.commit()
-    AuditLog.log("class_deleted", description=f"Class {name} deleted", user=current_user)
-    flash("Class deleted.", "info")
+    if safe_commit(
+        friendly_message="This class can't be deleted while students or attendance records are linked to it. "
+                          "Reassign its students first.",
+        log_context=f"delete_class {class_id}",
+    ):
+        AuditLog.log("class_deleted", description=f"Class {name} deleted", user=current_user)
+        flash("Class deleted.", "info")
     return redirect(url_for("classes.list_classes"))
 
 
@@ -116,6 +136,8 @@ def delete_class(class_id):
 @login_required
 @write_access_required
 def assign_students(class_id):
+    if current_user.role == Role.TEACHER:
+        abort(403)
     classroom = ClassRoom.query.get_or_404(class_id)
     if not is_super_admin() and classroom.school_id != current_school_id():
         abort(403)
@@ -124,10 +146,10 @@ def assign_students(class_id):
     Student.query.filter(Student.id.in_(student_ids), Student.school_id == classroom.school_id).update(
         {"class_id": classroom.id}, synchronize_session=False
     )
-    db.session.commit()
-    AuditLog.log(
-        "students_assigned_to_class", description=f"{len(student_ids)} students assigned to {classroom.name}",
-        entity_type="class", entity_id=classroom.id, user=current_user,
-    )
-    flash("Students assigned to class.", "success")
+    if safe_commit(log_context=f"assign_students class={class_id}"):
+        AuditLog.log(
+            "students_assigned_to_class", description=f"{len(student_ids)} students assigned to {classroom.name}",
+            entity_type="class", entity_id=classroom.id, user=current_user,
+        )
+        flash("Students assigned to class.", "success")
     return redirect(url_for("classes.view_class", class_id=classroom.id))

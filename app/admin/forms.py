@@ -1,7 +1,9 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, PasswordField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Email, Length, Optional, EqualTo
-from app.models.user import Role
+from wtforms import StringField, SelectField, PasswordField, BooleanField, SubmitField, DecimalField, TextAreaField
+from wtforms.validators import DataRequired, Email, Length, Optional, EqualTo, ValidationError
+from app.models.user import Role, User
+from app.models.school import School
+from app.models.payment_type import PaymentFrequency
 
 
 class SchoolForm(FlaskForm):
@@ -12,6 +14,18 @@ class SchoolForm(FlaskForm):
     email = StringField("Email", validators=[Optional(), Email()])
     is_active = BooleanField("Active", default=True)
     submit = SubmitField("Save School")
+
+    def __init__(self, *args, obj=None, **kwargs):
+        super().__init__(*args, obj=obj, **kwargs)
+        self._obj = obj
+
+    def validate_code(self, field):
+        code = field.data.strip().upper()
+        query = School.query.filter(School.code == code)
+        if self._obj is not None:
+            query = query.filter(School.id != self._obj.id)
+        if query.first():
+            raise ValidationError("A school with this code already exists.")
 
 
 class UserForm(FlaskForm):
@@ -25,3 +39,45 @@ class UserForm(FlaskForm):
     password = PasswordField("Password", validators=[Optional(), Length(min=8, message="Minimum 8 characters")])
     is_active_user = BooleanField("Active", default=True)
     submit = SubmitField("Save User")
+
+    def __init__(self, *args, obj=None, **kwargs):
+        """`obj` is the User being edited (None when creating). Kept so the
+        uniqueness validators below can exclude the record's own row."""
+        super().__init__(*args, obj=obj, **kwargs)
+        self._obj = obj
+
+    def validate_username(self, field):
+        username = field.data.strip()
+        query = User.query.filter(User.username == username)
+        if self._obj is not None:
+            query = query.filter(User.id != self._obj.id)
+        if query.first():
+            raise ValidationError("That username is already taken. Please choose another.")
+
+    def validate_email(self, field):
+        email = field.data.strip().lower()
+        query = User.query.filter(User.email == email)
+        if self._obj is not None:
+            query = query.filter(User.id != self._obj.id)
+        if query.first():
+            raise ValidationError("That email address is already registered to another user.")
+
+    def validate_school_id(self, field):
+        """A non-super-admin role must always be tied to a real school.
+        This is what previously let a Super Admin accidentally create a
+        School Admin with no school assigned (school_id left at 0 / None),
+        leaving that account unable to do anything once they logged in."""
+        if self.role.data and self.role.data != Role.SUPER_ADMIN and not field.data:
+            raise ValidationError("Please select a school for this role.")
+
+
+class PaymentTypeForm(FlaskForm):
+    name = StringField("Name", validators=[DataRequired(), Length(max=100)])
+    frequency = SelectField(
+        "Frequency", choices=[(f, PaymentFrequency.LABELS[f]) for f in PaymentFrequency.ALL],
+        validators=[DataRequired()],
+    )
+    amount = DecimalField("Default Amount (optional)", places=2, validators=[Optional()])
+    description = TextAreaField("Description", validators=[Optional(), Length(max=250)])
+    is_active = BooleanField("Active", default=True)
+    submit = SubmitField("Save Payment Type")

@@ -11,6 +11,7 @@ class PaymentForm(FlaskForm):
         choices=[(t, PaymentType.LABELS[t]) for t in PaymentType.ALL],
         validators=[DataRequired()],
     )
+    custom_payment_type_id = SelectField("Custom Payment Type (optional)", coerce=int, validators=[Optional()])
     amount = DecimalField("Amount", places=2, validators=[DataRequired(), NumberRange(min=0.01)])
     payment_date = DateField("Payment Date", validators=[DataRequired()])
     remarks = TextAreaField("Remarks", validators=[Optional(), Length(max=250)])

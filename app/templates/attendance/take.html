@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import csrf_field %}
+{% block title %}Attendance - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Take Attendance</h4>
+    <a href="{{ url_for('attendance.reports') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-bar-chart"></i> Attendance Reports</a>
+</div>
+
+<div class="card p-3 mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label small">Class</label>
+            <select name="class_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- Select a Class --</option>
+                {% for c in classes %}
+                <option value="{{ c.id }}" {{ 'selected' if classroom and classroom.id == c.id }}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">Date</label>
+            <input type="date" name="date" class="form-control form-control-sm" value="{{ attendance_date }}" onchange="this.form.submit()">
+        </div>
+    </form>
+</div>
+
+{% if classroom %}
+<form method="POST">
+    {{ csrf_field() }}
+    <input type="hidden" name="class_id" value="{{ classroom.id }}">
+    <input type="hidden" name="date" value="{{ attendance_date }}">
+    <div class="card table-card">
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead class="table-light"><tr><th>Student</th><th>Status</th><th>Remarks</th></tr></thead>
+                <tbody>
+                    {% for s in students %}
+                    {% set rec = existing.get(s.id) %}
+                    <tr>
+                        <td>{{ s.full_name }} <span class="text-muted small">({{ s.student_id }})</span></td>
+                        <td>
+                            <select name="status_{{ s.id }}" class="form-select form-select-sm" style="width: 140px;">
+                                {% for st in statuses %}
+                                <option value="{{ st }}" {{ 'selected' if (rec and rec.status == st) or (not rec and st == 'present') }}>{{ status_labels[st] }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td><input type="text" name="remarks_{{ s.id }}" class="form-control form-control-sm" value="{{ rec.remarks if rec else '' }}" placeholder="Optional"></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="text-center text-muted py-4">No active students in this class yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if students %}
+    <button type="submit" class="btn brand-btn text-white mt-3"><i class="bi bi-check-circle"></i> Save Attendance</button>
+    {% endif %}
+</form>
+{% else %}
+<p class="text-muted text-center py-5">Select a class above to take attendance.</p>
+{% endif %}
+{% endblock %}

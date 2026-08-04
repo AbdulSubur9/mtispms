@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Applications - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Student Applications</h4>
+    <a href="{{ url_for('applications.create_application') }}" class="btn brand-btn text-white btn-sm"><i class="bi bi-plus-lg"></i> New Application</a>
+</div>
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+            <thead class="table-light"><tr><th>Applicant</th><th>Guardian</th><th>Phone</th><th>Date</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                {% for a in applications %}
+                <tr>
+                    <td>{{ a.full_name }}</td>
+                    <td>{{ a.guardian_name }}</td>
+                    <td>{{ a.guardian_phone }}</td>
+                    <td>{{ a.application_date }}</td>
+                    <td>
+                        <span class="badge bg-{{ 'success' if a.status == 'approved' else ('danger' if a.status == 'rejected' else 'secondary') }}">{{ a.status_label }}</span>
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ url_for('applications.view_application', application_id=a.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-4">No applications yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

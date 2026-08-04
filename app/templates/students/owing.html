@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}Students Owing - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h4 class="mb-0">Students Owing</h4>
+    {% if schools %}
+    <form method="get" class="d-flex align-items-center gap-2">
+        <select name="school_id" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">All Schools</option>
+            {% for s in schools %}
+            <option value="{{ s.id }}" {{ 'selected' if selected_school_id == s.id }}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+    {% endif %}
+</div>
+
+<div class="card p-3 mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        {% if selected_school_id %}<input type="hidden" name="school_id" value="{{ selected_school_id }}">{% endif %}
+        <div class="col-md-4">
+            <label class="form-label small">Expected amount per student (optional)</label>
+            <input type="number" step="0.01" name="expected" class="form-control form-control-sm" value="{{ expected_amount or '' }}" placeholder="e.g. 50">
+        </div>
+        <div class="col-md-3">
+            <button class="btn btn-sm brand-btn text-white w-100" type="submit">Apply</button>
+        </div>
+    </form>
+    <p class="text-muted small mt-2 mb-0">
+        Set an expected amount to calculate an exact outstanding balance per student.
+        Leave blank to simply list every active student with a reminder link.
+    </p>
+</div>
+
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr><th>Student</th><th>Class</th><th>Guardian</th><th>Phone</th><th>Amount Paid</th><th>Balance Owed</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td><a href="{{ url_for('students.view_student', student_id=row.student.id) }}">{{ row.student.full_name }}</a></td>
+                    <td>{{ row.student.classroom.name if row.student.classroom else '-' }}</td>
+                    <td>{{ row.student.guardian_name }}</td>
+                    <td>{{ row.student.guardian_contact or '-' }}</td>
+                    <td>{{ "%.2f"|format(row.paid) }}</td>
+                    <td>{% if expected_amount %}<span class="text-danger fw-semibold">{{ "%.2f"|format(row.balance) }}</span>{% else %}-{% endif %}</td>
+                    <td class="text-end">
+                        {% if row.has_contact %}
+                        <a href="{{ row.whatsapp_url }}" target="_blank" class="btn btn-sm btn-success"><i class="bi bi-whatsapp"></i> Remind</a>
+                        {% else %}
+                        <span class="text-muted small">No phone on file</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted py-4">No outstanding students found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<p class="text-muted small mt-2">
+    Reminders open WhatsApp Web/App with a pre-filled message via <code>wa.me</code> links - no third-party
+    WhatsApp Business API integration required. The same message payload can be reused later for SMS
+    (e.g. Twilio, Hubtel, Africa's Talking) without changing this page.
+</p>
+{% endblock %}

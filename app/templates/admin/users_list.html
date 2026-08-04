@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'shared/macros.html' import csrf_field, delete_button %}
 {% block title %}Users - {{ app_name }}{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -19,11 +20,17 @@
                     <td><span class="badge bg-{{ 'success' if u.is_active_user else 'secondary' }}">{{ 'Active' if u.is_active_user else 'Inactive' }}</span></td>
                     <td class="text-end">
                         <a href="{{ url_for('admin.edit_user', user_id=u.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                        {% if u.id != current_user.id %}
                         <form method="POST" action="{{ url_for('admin.toggle_user_active', user_id=u.id) }}" class="d-inline">
+                            {{ csrf_field() }}
                             <button class="btn btn-sm btn-outline-{{ 'danger' if u.is_active_user else 'success' }}">
                                 <i class="bi bi-{{ 'slash-circle' if u.is_active_user else 'check-circle' }}"></i>
                             </button>
                         </form>
+                        {{ delete_button(url_for('admin.delete_user', user_id=u.id), confirm_message='Delete user ' ~ u.username ~ '? This cannot be undone.') }}
+                        {% else %}
+                        <span class="text-muted small">(you)</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% else %}

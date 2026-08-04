@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import csrf_field %}
+{% block title %}{{ application.full_name }} - Application{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">{{ application.full_name }}</h4>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('applications.download_application_pdf', application_id=application.id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-printer"></i> Print PDF</a>
+        {% if application.status == 'pending' %}
+        <form method="POST" action="{{ url_for('applications.approve_application', application_id=application.id) }}" class="d-inline" onsubmit="return confirmDelete('Approve this application and create a student record?')">
+            {{ csrf_field() }}
+            <button class="btn btn-success btn-sm text-white"><i class="bi bi-check-circle"></i> Approve & Admit</button>
+        </form>
+        <form method="POST" action="{{ url_for('applications.reject_application', application_id=application.id) }}" class="d-inline" onsubmit="return confirmDelete('Reject this application?')">
+            {{ csrf_field() }}
+            <button class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> Reject</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6>Student Information</h6>
+            <p class="small mb-1"><strong>Gender:</strong> {{ (application.gender or '-')|title }}</p>
+            <p class="small mb-1"><strong>Date of Birth:</strong> {{ application.date_of_birth or '-' }}</p>
+            <p class="small mb-1"><strong>Previous School:</strong> {{ application.previous_school or '-' }}</p>
+            <p class="small mb-0"><strong>Address:</strong> {{ application.address or '-' }}</p>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6>Parent / Guardian</h6>
+            <p class="small mb-1"><strong>Name:</strong> {{ application.guardian_name }}</p>
+            <p class="small mb-1"><strong>Phone:</strong> {{ application.guardian_phone }}</p>
+            <p class="small mb-1"><strong>Occupation:</strong> {{ application.guardian_occupation or '-' }}</p>
+            <p class="small mb-0"><strong>Address:</strong> {{ application.guardian_address or '-' }}</p>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6>Emergency Contact</h6>
+            <p class="small mb-1"><strong>Name:</strong> {{ application.emergency_contact_name or '-' }}</p>
+            <p class="small mb-1"><strong>Phone:</strong> {{ application.emergency_contact_phone or '-' }}</p>
+            <p class="small mb-0"><strong>Relationship:</strong> {{ application.emergency_contact_relationship or '-' }}</p>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6>Status</h6>
+            <span class="badge bg-{{ 'success' if application.status == 'approved' else ('danger' if application.status == 'rejected' else 'secondary') }}">{{ application.status_label }}</span>
+            {% if application.student_id %}
+            <p class="small mt-2 mb-0"><a href="{{ url_for('students.view_student', student_id=application.student_id) }}">View admitted student record</a></p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

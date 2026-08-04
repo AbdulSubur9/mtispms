@@ -5,7 +5,10 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4 class="mb-0">Payments</h4>
     {% if current_user.role != 'teacher' %}
-    <a href="{{ url_for('payments.create_payment') }}" class="btn brand-btn text-white btn-sm"><i class="bi bi-plus-lg"></i> Record Payment</a>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('payments.collect') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-search"></i> Search & Collect</a>
+        <a href="{{ url_for('payments.create_payment') }}" class="btn brand-btn text-white btn-sm"><i class="bi bi-plus-lg"></i> Record Payment</a>
+    </div>
     {% endif %}
 </div>
 

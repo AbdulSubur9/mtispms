@@ -4,12 +4,20 @@ from app.extensions import db
 
 class Student(db.Model):
     __tablename__ = "students"
+    __table_args__ = (
+        # Student IDs are human-readable and scoped PER SCHOOL (e.g. every school
+        # can independently have a "STU-0001"). The uniqueness constraint must
+        # therefore be composite, not a bare global unique column - otherwise the
+        # second school to register its first student collides with the first
+        # school's STU-0001 and the insert fails with an IntegrityError.
+        db.UniqueConstraint("school_id", "student_id", name="uq_students_school_student_id"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     school_id = db.Column(db.Integer, db.ForeignKey("schools.id"), nullable=False)
     class_id = db.Column(db.Integer, db.ForeignKey("classes.id"), nullable=True)
 
-    student_id = db.Column(db.String(20), unique=True, nullable=False, index=True)  # STU-0001
+    student_id = db.Column(db.String(20), nullable=False, index=True)  # STU-0001 (unique within school)
     first_name = db.Column(db.String(80), nullable=False)
     last_name = db.Column(db.String(80), nullable=False)
     gender = db.Column(db.String(10))
@@ -24,6 +32,8 @@ class Student(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     payments = db.relationship("Payment", backref="student", lazy="dynamic")
+    applications = db.relationship("StudentApplication", backref="student", lazy="dynamic")
+    attendance_records = db.relationship("Attendance", backref="student", lazy="dynamic")
 
     @property
     def full_name(self):
@@ -41,18 +51,22 @@ class Student(db.Model):
 
     @staticmethod
     def generate_student_id(school_id):
-        last = (
-            Student.query.filter_by(school_id=school_id)
-            .order_by(Student.id.desc())
-            .first()
+        """Generate the next STU-XXXX id, unique *within this school only*.
+        Scans all existing IDs for the school (not just the last row) so that
+        deletions or out-of-order inserts never cause a collision."""
+        existing = (
+            db.session.query(Student.student_id)
+            .filter(Student.school_id == school_id, Student.student_id.like("STU-%"))
+            .all()
         )
-        next_num = 1
-        if last and last.student_id and "-" in last.student_id:
+        max_num = 0
+        for (sid,) in existing:
             try:
-                next_num = int(last.student_id.split("-")[-1]) + 1
-            except ValueError:
-                next_num = Student.query.filter_by(school_id=school_id).count() + 1
-        return f"STU-{next_num:04d}"
+                num = int(sid.split("-")[-1])
+                max_num = max(max_num, num)
+            except (ValueError, IndexError):
+                continue
+        return f"STU-{max_num + 1:04d}"
 
     def __repr__(self):
         return f"<Student {self.student_id} {self.full_name}>"

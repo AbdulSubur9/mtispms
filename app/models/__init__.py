@@ -3,10 +3,13 @@ from app.models.user import User
 from app.models.student import Student
 from app.models.classroom import ClassRoom
 from app.models.payment import Payment, PaymentType
+from app.models.payment_type import SchoolPaymentType, PaymentFrequency
 from app.models.expense import Expense, ExpenseCategory
 from app.models.receipt import Receipt
 from app.models.audit_log import AuditLog
 from app.models.notification import Notification
+from app.models.attendance import Attendance, AttendanceStatus
+from app.models.student_application import StudentApplication, ApplicationStatus
 
 __all__ = [
     "School",
@@ -15,9 +18,15 @@ __all__ = [
     "ClassRoom",
     "Payment",
     "PaymentType",
+    "SchoolPaymentType",
+    "PaymentFrequency",
     "Expense",
     "ExpenseCategory",
     "Receipt",
     "AuditLog",
     "Notification",
+    "Attendance",
+    "AttendanceStatus",
+    "StudentApplication",
+    "ApplicationStatus",
 ]

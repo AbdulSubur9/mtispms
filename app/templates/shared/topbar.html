@@ -6,23 +6,29 @@
         <input type="search" name="q" placeholder="Search students, receipts, expenses..." value="{{ request.args.get('q', '') }}">
     </form>
 
+    {% if current_user.role == 'super_admin' %}
+    <form method="get" class="d-none d-md-flex align-items-center gap-1" id="schoolSwitcherForm">
+        <i class="bi bi-building text-muted"></i>
+        <select name="school_id" class="form-select form-select-sm" style="width: 190px;" onchange="this.form.submit()">
+            <option value="">All Schools (combined)</option>
+            {% for s in all_schools %}
+            <option value="{{ s.id }}" {{ 'selected' if active_school_id == s.id }}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+    {% endif %}
+
     <div class="topbar-actions">
         <button class="btn btn-sm btn-outline-secondary" id="themeToggle" title="Toggle theme">
             <i class="bi bi-moon-stars"></i>
         </button>
 
-        <div class="dropdown">
-            <button class="btn btn-sm btn-outline-secondary position-relative" data-bs-toggle="dropdown">
-                <i class="bi bi-bell"></i>
-                {% if unread_notifications %}
-                <span class="badge rounded-pill bg-danger notif-badge">{{ unread_notifications }}</span>
-                {% endif %}
-            </button>
-            <div class="dropdown-menu dropdown-menu-end p-2" style="width: 320px;">
-                <h6 class="dropdown-header">Notifications</h6>
-                <div class="text-muted small px-2">You have {{ unread_notifications }} unread notification(s).</div>
-            </div>
-        </div>
+        <a href="{{ url_for('notifications.center') }}" class="btn btn-sm btn-outline-secondary position-relative">
+            <i class="bi bi-bell"></i>
+            {% if unread_notifications %}
+            <span class="badge rounded-pill bg-danger notif-badge">{{ unread_notifications }}</span>
+            {% endif %}
+        </a>
 
         <div class="dropdown">
             <button class="btn btn-sm btn-light d-flex align-items-center gap-2" data-bs-toggle="dropdown">

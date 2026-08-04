@@ -1,13 +1,16 @@
 from datetime import date
-from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, abort
+from urllib.parse import quote
+
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, abort, jsonify, current_app
 from flask_login import login_required, current_user
 from openpyxl import load_workbook
 from app.extensions import db
-from app.models import Student, ClassRoom, AuditLog, Payment
+from app.models import Student, ClassRoom, AuditLog, Payment, School
 from app.models.user import Role
 from app.students.forms import StudentForm, StudentUploadForm
 from app.utils.decorators import write_access_required
 from app.utils.helpers import save_upload, scope_query_to_school, current_school_id, is_super_admin
+from app.utils.db_safety import safe_commit
 from app.services.export_service import export_excel
 
 students_bp = Blueprint("students", __name__, template_folder="../templates/students")
@@ -36,6 +39,7 @@ def list_students():
             | (Student.last_name.ilike(like))
             | (Student.student_id.ilike(like))
             | (Student.guardian_name.ilike(like))
+            | (Student.guardian_contact.ilike(like))
         )
     if status:
         query = query.filter(Student.status == status)
@@ -69,7 +73,7 @@ def view_student(student_id):
 @login_required
 @write_access_required
 def create_student():
-    school_id = current_school_id() if not is_super_admin() else request.args.get("school_id", type=int)
+    school_id = current_school_id()
     if school_id is None:
         flash("Select a school context before adding a student.", "warning")
         return redirect(url_for("dashboard.index"))
@@ -94,13 +98,13 @@ def create_student():
             photo=photo_path,
         )
         db.session.add(student)
-        db.session.commit()
-        AuditLog.log(
-            "student_created", description=f"Student {student.student_id} created", entity_type="student",
-            entity_id=student.id, user=current_user, school_id=school_id,
-        )
-        flash(f"Student {student.full_name} ({student.student_id}) created successfully.", "success")
-        return redirect(url_for("students.list_students"))
+        if safe_commit(log_context=f"create_student school={school_id}"):
+            AuditLog.log(
+                "student_created", description=f"Student {student.student_id} created", entity_type="student",
+                entity_id=student.id, user=current_user, school_id=school_id,
+            )
+            flash(f"Student {student.full_name} ({student.student_id}) created successfully.", "success")
+            return redirect(url_for("students.list_students"))
 
     return render_template("students/form.html", form=form, title="Add Student")
 
@@ -130,13 +134,13 @@ def edit_student(student_id):
         student.status = form.status.data
         if form.photo.data:
             student.photo = save_upload(form.photo.data, subfolder="students")
-        db.session.commit()
-        AuditLog.log(
-            "student_updated", description=f"Student {student.student_id} updated", entity_type="student",
-            entity_id=student.id, user=current_user,
-        )
-        flash("Student updated successfully.", "success")
-        return redirect(url_for("students.view_student", student_id=student.id))
+        if safe_commit(log_context=f"edit_student {student.id}"):
+            AuditLog.log(
+                "student_updated", description=f"Student {student.student_id} updated", entity_type="student",
+                entity_id=student.id, user=current_user,
+            )
+            flash("Student updated successfully.", "success")
+            return redirect(url_for("students.view_student", student_id=student.id))
 
     return render_template("students/form.html", form=form, title="Edit Student", student=student)
 
@@ -153,9 +157,13 @@ def delete_student(student_id):
 
     student_ref = f"{student.student_id} - {student.full_name}"
     db.session.delete(student)
-    db.session.commit()
-    AuditLog.log("student_deleted", description=f"Student {student_ref} deleted", user=current_user)
-    flash("Student deleted.", "info")
+    if safe_commit(
+        friendly_message="This student can't be deleted because they have payment records. "
+                          "Deactivate the student instead to preserve financial history.",
+        log_context=f"delete_student {student_id}",
+    ):
+        AuditLog.log("student_deleted", description=f"Student {student_ref} deleted", user=current_user)
+        flash("Student deleted.", "info")
     return redirect(url_for("students.list_students"))
 
 
@@ -167,12 +175,12 @@ def deactivate_student(student_id):
     if not is_super_admin() and student.school_id != current_school_id():
         abort(403)
     student.status = "deactivated"
-    db.session.commit()
-    AuditLog.log(
-        "student_deactivated", description=f"Student {student.student_id} deactivated",
-        entity_type="student", entity_id=student.id, user=current_user,
-    )
-    flash("Student deactivated.", "info")
+    if safe_commit(log_context=f"deactivate_student {student_id}"):
+        AuditLog.log(
+            "student_deactivated", description=f"Student {student.student_id} deactivated",
+            entity_type="student", entity_id=student.id, user=current_user,
+        )
+        flash("Student deactivated.", "info")
     return redirect(url_for("students.view_student", student_id=student.id))
 
 
@@ -200,40 +208,46 @@ def upload_students():
 
         col_index = {name: idx for idx, name in enumerate(header)}
 
-        for row in ws.iter_rows(min_row=2, values_only=True):
+        for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
             if not row or not row[col_index.get("first_name", 0)]:
                 continue
+            # Each row gets its own savepoint so one bad row can't poison the
+            # whole transaction and silently drop every subsequent row - a
+            # real risk on PostgreSQL, where a failed statement aborts the
+            # entire transaction until it's rolled back.
             try:
-                first_name = str(row[col_index["first_name"]]).strip()
-                last_name = str(row[col_index.get("last_name", 1)]).strip()
-                gender = str(row[col_index["gender"]]).strip().lower() if "gender" in col_index and row[col_index["gender"]] else "male"
-                guardian_name = str(row[col_index["guardian_name"]]).strip() if "guardian_name" in col_index and row[col_index["guardian_name"]] else ""
-                guardian_contact = str(row[col_index["guardian_contact"]]).strip() if "guardian_contact" in col_index and row[col_index["guardian_contact"]] else ""
+                with db.session.begin_nested():
+                    first_name = str(row[col_index["first_name"]]).strip()
+                    last_name = str(row[col_index.get("last_name", 1)]).strip()
+                    gender = str(row[col_index["gender"]]).strip().lower() if "gender" in col_index and row[col_index["gender"]] else "male"
+                    guardian_name = str(row[col_index["guardian_name"]]).strip() if "guardian_name" in col_index and row[col_index["guardian_name"]] else ""
+                    guardian_contact = str(row[col_index["guardian_contact"]]).strip() if "guardian_contact" in col_index and row[col_index["guardian_contact"]] else ""
 
-                student = Student(
-                    school_id=school_id,
-                    student_id=Student.generate_student_id(school_id),
-                    first_name=first_name,
-                    last_name=last_name,
-                    gender=gender,
-                    guardian_name=guardian_name,
-                    guardian_contact=guardian_contact,
-                    admission_date=date.today(),
-                    status="active",
-                )
-                db.session.add(student)
-                db.session.flush()
+                    student = Student(
+                        school_id=school_id,
+                        student_id=Student.generate_student_id(school_id),
+                        first_name=first_name,
+                        last_name=last_name,
+                        gender=gender,
+                        guardian_name=guardian_name,
+                        guardian_contact=guardian_contact,
+                        admission_date=date.today(),
+                        status="active",
+                    )
+                    db.session.add(student)
+                    db.session.flush()
                 created += 1
             except Exception as exc:  # noqa: BLE001
-                errors.append(str(exc))
+                current_app.logger.warning("Row %s skipped during student import: %s", row_num, exc)
+                errors.append(f"Row {row_num}: {exc}")
 
-        db.session.commit()
-        AuditLog.log(
-            "students_bulk_uploaded", description=f"{created} students uploaded via Excel",
-            user=current_user, school_id=school_id,
-        )
-        flash(f"{created} students imported successfully." + (f" {len(errors)} rows skipped." if errors else ""), "success")
-        return redirect(url_for("students.list_students"))
+        if safe_commit(log_context=f"upload_students school={school_id}"):
+            AuditLog.log(
+                "students_bulk_uploaded", description=f"{created} students uploaded via Excel",
+                user=current_user, school_id=school_id,
+            )
+            flash(f"{created} students imported successfully." + (f" {len(errors)} rows skipped." if errors else ""), "success")
+            return redirect(url_for("students.list_students"))
 
     return render_template("students/upload.html", form=form)
 
@@ -254,3 +268,102 @@ def download_students():
     mem = export_excel(headers, rows, sheet_title="Students")
     return send_file(mem, as_attachment=True, download_name="students.xlsx",
                       mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+# ---------- Live AJAX search (used by the payment collection screen) ----------
+
+@students_bp.route("/api/search")
+@login_required
+def api_search_students():
+    """JSON endpoint for the live student search used on the "Record Payment"
+    screen. Always scoped to the current user's school (or, for a Super
+    Admin, to the ?school_id they've selected) - never returns cross-tenant
+    results."""
+    q = request.args.get("q", "").strip()
+    school_id = current_school_id()
+
+    if not q or len(q) < 2:
+        return jsonify({"results": []})
+
+    query = Student.query.filter(Student.status == "active")
+    if school_id is not None:
+        query = query.filter(Student.school_id == school_id)
+    elif not is_super_admin():
+        return jsonify({"results": []})
+
+    like = f"%{q}%"
+
+    # also allow matching by class name
+    query = query.outerjoin(ClassRoom, Student.class_id == ClassRoom.id).filter(
+        (Student.student_id.ilike(like))
+        | (Student.first_name.ilike(like))
+        | (Student.last_name.ilike(like))
+        | (Student.guardian_name.ilike(like))
+        | (Student.guardian_contact.ilike(like))
+        | (ClassRoom.name.ilike(like))
+    )
+
+    students = query.order_by(Student.first_name).limit(15).all()
+    return jsonify({
+        "results": [
+            {
+                "id": s.id,
+                "student_id": s.student_id,
+                "name": s.full_name,
+                "guardian_name": s.guardian_name,
+                "guardian_contact": s.guardian_contact,
+                "class_name": s.classroom.name if s.classroom else "",
+                "balance": s.total_paid,
+            }
+            for s in students
+        ]
+    })
+
+
+# ---------- Students Owing / Reminders ----------
+
+@students_bp.route("/owing")
+@login_required
+def students_owing():
+    """List of active students whose contributions are below what's expected
+    for the current period, with one-click WhatsApp reminder links for
+    guardians. Available to admins and collectors (the people responsible
+    for chasing payments)."""
+    if current_user.role not in (Role.SUPER_ADMIN, Role.SCHOOL_ADMIN, Role.ACCOUNTANT, Role.COLLECTOR):
+        abort(403)
+
+    school_id = current_school_id()
+    expected_amount = request.args.get("expected", type=float) or 0.0
+
+    query = Student.query.filter(Student.status == "active")
+    if school_id is not None:
+        query = query.filter(Student.school_id == school_id)
+    students = query.order_by(Student.first_name).all()
+
+    school = School.query.get(school_id) if school_id else None
+    rows = []
+    for s in students:
+        paid = s.total_paid
+        balance = max(expected_amount - paid, 0) if expected_amount else 0
+        if not expected_amount or balance > 0:
+            message = (
+                f"Assalamu Alaikum. This is a reminder from {school.name if school else 'the Madrassa'}. "
+                f"Your child {s.first_name} has an outstanding balance"
+                + (f" of GH₵{balance:.2f}." if expected_amount else ".")
+                + " Kindly make payment at your earliest convenience. JazakAllahu Khairan."
+            )
+            whatsapp_number = "".join(ch for ch in (s.guardian_contact or "") if ch.isdigit())
+            whatsapp_url = f"https://wa.me/{whatsapp_number}?text={quote(message)}" if whatsapp_number else None
+            rows.append({
+                "student": s,
+                "paid": paid,
+                "balance": balance,
+                "whatsapp_url": whatsapp_url,
+                "has_contact": bool(whatsapp_number),
+            })
+
+    return render_template(
+        "students/owing.html", rows=rows, expected_amount=expected_amount,
+        schools=School.query.order_by(School.name).all() if is_super_admin() else [],
+        selected_school_id=school_id,
+    )

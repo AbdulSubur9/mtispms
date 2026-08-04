@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import delete_button %}
+{% block title %}Payment Types - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h4 class="mb-0">Payment Types</h4>
+    <div class="d-flex gap-2">
+        {% if schools %}
+        <form method="get" class="d-flex align-items-center gap-2">
+            <select name="school_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- Select School --</option>
+                {% for s in schools %}
+                <option value="{{ s.id }}" {{ 'selected' if selected_school_id == s.id }}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('admin.create_payment_type', school_id=selected_school_id) }}" class="btn brand-btn text-white btn-sm"><i class="bi bi-plus-lg"></i> Add Payment Type</a>
+    </div>
+</div>
+<p class="text-muted small">
+    Define the payment structures your Madrassa actually uses (e.g. "Saturday Payment", "First Term Fees").
+    These appear as options when collectors record a payment.
+</p>
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+            <thead class="table-light"><tr><th>Name</th><th>Frequency</th><th>Default Amount</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                {% for pt in payment_types %}
+                <tr>
+                    <td>{{ pt.name }}</td>
+                    <td>{{ pt.frequency_label }}</td>
+                    <td>{{ "%.2f"|format(pt.amount) if pt.amount is not none else '-' }}</td>
+                    <td><span class="badge bg-{{ 'success' if pt.is_active else 'secondary' }}">{{ 'Active' if pt.is_active else 'Inactive' }}</span></td>
+                    <td class="text-end">
+                        <a href="{{ url_for('admin.edit_payment_type', type_id=pt.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                        {{ delete_button(url_for('admin.delete_payment_type', type_id=pt.id), confirm_message='Deactivate this payment type?', label='Deactivate', btn_class='btn btn-sm btn-outline-warning') }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center text-muted py-4">No payment types configured yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

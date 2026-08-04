@@ -1,25 +1,22 @@
 from datetime import date
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template
 from flask_login import login_required, current_user
 from app.models import School, Notification
 from app.models.user import Role
 from app.services import stats_service as stats
+from app.utils.helpers import current_school_id
 
 dashboard_bp = Blueprint("dashboard", __name__, template_folder="../templates/dashboard")
-
-
-def _resolve_school_id():
-    """Super admins can pick a school from a dropdown (?school_id=), others are locked to their own."""
-    if current_user.role == Role.SUPER_ADMIN:
-        school_id = request.args.get("school_id", type=int)
-        return school_id  # None = all schools
-    return current_user.school_id
 
 
 @dashboard_bp.route("/")
 @login_required
 def index():
-    school_id = _resolve_school_id()
+    # Uses the shared current_school_id() helper so the Super Admin's school
+    # selection here is the SAME sticky selection that scopes every other
+    # page (students, payments, expenses, reports) - picking a school once
+    # filters the whole app, not just this dashboard.
+    school_id = current_school_id()
     today = date.today()
     month_start = today.replace(day=1)
 

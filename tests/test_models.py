@@ -78,3 +78,58 @@ def test_classroom_student_count(app, school):
     db.session.commit()
 
     assert classroom.student_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for the multi-tenant ID-collision bug: two DIFFERENT
+# schools must each be able to independently create a "#0001" student,
+# receipt, and expense reference without an IntegrityError. Before the
+# composite-unique-constraint fix, the second school's first insert of each
+# type would fail because student_id/receipt_number/reference_number were
+# (incorrectly) globally unique columns.
+# ---------------------------------------------------------------------------
+
+def test_two_schools_can_each_have_student_0001(app, school):
+    from app.models import School
+
+    second_school = School(name="Second School", code="SEC002")
+    db.session.add(second_school)
+    db.session.flush()
+
+    s1 = Student(school_id=school.id, student_id=Student.generate_student_id(school.id),
+                 first_name="A", last_name="One", gender="male", guardian_name="G", guardian_contact="0800000001")
+    s2 = Student(school_id=second_school.id, student_id=Student.generate_student_id(second_school.id),
+                 first_name="B", last_name="Two", gender="male", guardian_name="G", guardian_contact="0800000002")
+    db.session.add_all([s1, s2])
+    db.session.commit()  # must NOT raise IntegrityError
+
+    assert s1.student_id == "STU-0001"
+    assert s2.student_id == "STU-0001"
+    assert s1.school_id != s2.school_id
+
+
+def test_two_schools_can_each_have_receipt_00001(app, school, super_admin):
+    from app.models import School
+
+    second_school = School(name="Second School", code="SEC003")
+    db.session.add(second_school)
+    db.session.flush()
+
+    student_a = Student(school_id=school.id, student_id="STU-0001", first_name="A", last_name="One",
+                         gender="male", guardian_name="G", guardian_contact="0800000001")
+    student_b = Student(school_id=second_school.id, student_id="STU-0001", first_name="B", last_name="Two",
+                         gender="male", guardian_name="G", guardian_contact="0800000002")
+    db.session.add_all([student_a, student_b])
+    db.session.flush()
+
+    p1 = Payment(school_id=school.id, student_id=student_a.id, collector_id=super_admin.id,
+                 receipt_number=Payment.generate_receipt_number(school.id), amount=100,
+                 payment_type=PaymentType.WEEKLY, payment_date=date.today())
+    p2 = Payment(school_id=second_school.id, student_id=student_b.id, collector_id=super_admin.id,
+                 receipt_number=Payment.generate_receipt_number(second_school.id), amount=100,
+                 payment_type=PaymentType.WEEKLY, payment_date=date.today())
+    db.session.add_all([p1, p2])
+    db.session.commit()  # must NOT raise IntegrityError
+
+    assert p1.receipt_number == p2.receipt_number  # same numbering, different schools - both valid
+    assert p1.school_id != p2.school_id

@@ -3,6 +3,12 @@
 {% block title %}{{ title }} - {{ app_name }}{% endblock %}
 {% block content %}
 <h4 class="mb-3">{{ title }}</h4>
+{% if available_balance is not none %}
+<div class="alert alert-{{ 'info' if available_balance >= 0 else 'danger' }} py-2" style="max-width: 640px;">
+    <i class="bi bi-wallet2"></i> Available balance: <strong>GH₵{{ "%.2f"|format(available_balance) }}</strong>
+    <span class="small text-muted">(expenses above this amount will be blocked)</span>
+</div>
+{% endif %}
 <div class="card p-4" style="max-width: 640px;">
     <form method="POST" enctype="multipart/form-data" novalidate>
         {{ form.hidden_tag() }}

@@ -29,11 +29,14 @@ class ExpenseCategory:
 
 class Expense(db.Model):
     __tablename__ = "expenses"
+    __table_args__ = (
+        db.UniqueConstraint("school_id", "reference_number", name="uq_expenses_school_reference_number"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     school_id = db.Column(db.Integer, db.ForeignKey("schools.id"), nullable=False)
 
-    reference_number = db.Column(db.String(30), unique=True, nullable=False, index=True)
+    reference_number = db.Column(db.String(30), nullable=False, index=True)
     amount = db.Column(db.Numeric(12, 2), nullable=False)
     purpose = db.Column(db.String(250), nullable=False)
     category = db.Column(db.String(30), nullable=False, default=ExpenseCategory.OTHERS)
@@ -53,19 +56,24 @@ class Expense(db.Model):
 
     @staticmethod
     def generate_reference_number(school_id):
-        last = (
-            Expense.query.filter_by(school_id=school_id)
-            .order_by(Expense.id.desc())
-            .first()
-        )
-        next_num = 1
-        if last and last.reference_number and "-" in last.reference_number:
-            try:
-                next_num = int(last.reference_number.split("-")[-1]) + 1
-            except ValueError:
-                next_num = Expense.query.filter_by(school_id=school_id).count() + 1
+        """Generate the next EXP-YY-NNNNN reference number, unique within this
+        school (scanning all existing numbers rather than trusting the last
+        row - see Payment.generate_receipt_number for rationale)."""
         year = datetime.utcnow().strftime("%y")
-        return f"EXP-{year}-{next_num:05d}"
+        prefix = f"EXP-{year}-"
+        existing = (
+            db.session.query(Expense.reference_number)
+            .filter(Expense.school_id == school_id, Expense.reference_number.like(f"{prefix}%"))
+            .all()
+        )
+        max_num = 0
+        for (ref,) in existing:
+            try:
+                num = int(ref.split("-")[-1])
+                max_num = max(max_num, num)
+            except (ValueError, IndexError):
+                continue
+        return f"{prefix}{max_num + 1:05d}"
 
     def __repr__(self):
         return f"<Expense {self.reference_number} {self.amount}>"

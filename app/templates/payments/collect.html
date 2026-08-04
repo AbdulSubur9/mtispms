@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}Collect Payment - {{ app_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-3">Collect Payment</h4>
+
+<div class="card p-3 mb-3">
+    <label class="form-label small">Search by Student ID, name, parent name, phone, or class</label>
+    <div class="position-relative">
+        <input type="text" id="studentSearchInput" class="form-control" placeholder="Start typing, e.g. &quot;Ahmed&quot;..." autocomplete="off">
+        <div id="searchResults" class="list-group position-absolute w-100 shadow-sm" style="z-index: 1000; display: none; max-height: 320px; overflow-y: auto;"></div>
+    </div>
+</div>
+
+<div id="studentPanel" style="display: none;">
+    <div class="card p-4">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <h5 id="sp-name" class="mb-0"></h5>
+                <p class="text-muted small mb-0" id="sp-meta"></p>
+            </div>
+            <div class="text-end">
+                <div class="small text-muted">Total Paid To Date</div>
+                <div class="fs-5 fw-bold" id="sp-balance"></div>
+            </div>
+        </div>
+        <a id="sp-payment-link" href="#" class="btn brand-btn text-white"><i class="bi bi-cash-coin"></i> Record Payment for This Student</a>
+        <a id="sp-history-link" href="#" class="btn btn-outline-secondary ms-2">View Full Payment History</a>
+    </div>
+</div>
+
+<div id="emptyState" class="text-center text-muted py-5">
+    <i class="bi bi-search" style="font-size: 2rem;"></i>
+    <p class="mt-2">Search for a student above to begin collecting a payment.</p>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const searchInput = document.getElementById('studentSearchInput');
+const resultsBox = document.getElementById('searchResults');
+const studentPanel = document.getElementById('studentPanel');
+const emptyState = document.getElementById('emptyState');
+let debounceTimer = null;
+
+function renderResults(items) {
+    if (!items.length) {
+        resultsBox.innerHTML = '<div class="list-group-item text-muted small">No matching students found.</div>';
+        resultsBox.style.display = 'block';
+        return;
+    }
+    resultsBox.innerHTML = items.map(function (s) {
+        return `<button type="button" class="list-group-item list-group-item-action result-item" data-id="${s.id}"
+                    data-name="${s.name}" data-student-id="${s.student_id}" data-guardian="${s.guardian_name}"
+                    data-phone="${s.guardian_contact}" data-class="${s.class_name}" data-balance="${s.balance}">
+                    <strong>${s.name}</strong> <span class="text-muted small">(${s.student_id})</span><br>
+                    <span class="small text-muted">${s.class_name || 'No class'} &middot; Guardian: ${s.guardian_name || '-'} ${s.guardian_contact ? '&middot; ' + s.guardian_contact : ''}</span>
+                </button>`;
+    }).join('');
+    resultsBox.style.display = 'block';
+
+    document.querySelectorAll('.result-item').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            selectStudent(btn.dataset);
+        });
+    });
+}
+
+function selectStudent(data) {
+    resultsBox.style.display = 'none';
+    searchInput.value = data.name;
+    emptyState.style.display = 'none';
+    studentPanel.style.display = 'block';
+
+    document.getElementById('sp-name').textContent = data.name + ' (' + data.studentId + ')';
+    document.getElementById('sp-meta').textContent = (data.class || 'No class') + ' | Guardian: ' + (data.guardian || '-') + (data.phone ? ' | ' + data.phone : '');
+    document.getElementById('sp-balance').textContent = parseFloat(data.balance).toFixed(2);
+    document.getElementById('sp-payment-link').href = "{{ url_for('payments.create_payment') }}?student_id=" + data.id;
+    document.getElementById('sp-history-link').href = "{{ url_for('students.list_students') }}" + data.id;
+}
+
+searchInput.addEventListener('input', function () {
+    const q = searchInput.value.trim();
+    clearTimeout(debounceTimer);
+    if (q.length < 2) {
+        resultsBox.style.display = 'none';
+        return;
+    }
+    debounceTimer = setTimeout(function () {
+        fetch("{{ url_for('students.api_search_students') }}?q=" + encodeURIComponent(q) + "&school_id={{ school_id }}")
+            .then(function (r) { return r.json(); })
+            .then(function (data) { renderResults(data.results); })
+            .catch(function () { resultsBox.style.display = 'none'; });
+    }, 250);
+});
+
+document.addEventListener('click', function (e) {
+    if (!resultsBox.contains(e.target) && e.target !== searchInput) {
+        resultsBox.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

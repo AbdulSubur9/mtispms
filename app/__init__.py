@@ -1,4 +1,6 @@
 import os
+import logging
+from logging.handlers import RotatingFileHandler
 from flask import Flask, render_template, request
 from flask_login import current_user
 from config import config_by_name
@@ -12,6 +14,8 @@ def create_app(config_name=None):
 
     os.makedirs(app.instance_path, exist_ok=True)
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+    _configure_logging(app)
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -36,6 +40,9 @@ def create_app(config_name=None):
     from app.admin.routes import admin_bp
     from app.api.routes import api_bp
     from app.search.routes import search_bp
+    from app.attendance.routes import attendance_bp
+    from app.applications.routes import applications_bp
+    from app.notifications.routes import notifications_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(dashboard_bp, url_prefix="/")
@@ -47,19 +54,36 @@ def create_app(config_name=None):
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(api_bp)
     app.register_blueprint(search_bp, url_prefix="/search")
+    app.register_blueprint(attendance_bp, url_prefix="/attendance")
+    app.register_blueprint(applications_bp, url_prefix="/applications")
+    app.register_blueprint(notifications_bp, url_prefix="/notifications")
 
     # ---- Context processors ----
     @app.context_processor
     def inject_globals():
-        from app.models import Notification
+        from app.models import Notification, School
+        from app.utils.helpers import current_school_id, is_super_admin
+
         unread_count = 0
+        all_schools = []
+        active_school_id = None
         if current_user.is_authenticated:
             q = Notification.query.filter(
                 (Notification.user_id == current_user.id)
                 | ((Notification.user_id.is_(None)) & (Notification.school_id == current_user.school_id))
             ).filter_by(is_read=False)
             unread_count = q.count()
-        return {"unread_notifications": unread_count, "app_name": "MT-ISPMS"}
+
+            if is_super_admin():
+                all_schools = School.query.order_by(School.name).all()
+                active_school_id = current_school_id()
+
+        return {
+            "unread_notifications": unread_count,
+            "app_name": "MT-ISPMS",
+            "all_schools": all_schools,
+            "active_school_id": active_school_id,
+        }
 
     # ---- Error handlers ----
     @app.errorhandler(403)
@@ -72,6 +96,10 @@ def create_app(config_name=None):
 
     @app.errorhandler(500)
     def server_error(e):
+        # Log the *real* exception server-side (with traceback) before ever
+        # showing the user a generic error page - previously nothing here
+        # was logged at all, so a 500 gave zero information for debugging.
+        app.logger.error("Unhandled exception on %s %s", request.method, request.path, exc_info=e)
         db.session.rollback()
         return render_template("errors/500.html"), 500
 
@@ -84,3 +112,25 @@ def create_app(config_name=None):
         print("Database seeded successfully.")
 
     return app
+
+
+def _configure_logging(app):
+    """Route application errors to a rotating log file (in addition to the
+    console) so production issues are diagnosable after the fact instead of
+    only being visible as a blank "Internal Server Error" to the user."""
+    if app.testing:
+        return
+
+    log_dir = os.path.join(app.instance_path, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+
+    file_handler = RotatingFileHandler(
+        os.path.join(log_dir, "mtispms.log"), maxBytes=1_000_000, backupCount=5
+    )
+    file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s [%(pathname)s:%(lineno)d]: %(message)s"
+    ))
+    file_handler.setLevel(logging.INFO if app.debug else logging.WARNING)
+
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.INFO if app.debug else logging.WARNING)

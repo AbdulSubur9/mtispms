@@ -1,5 +1,5 @@
 from datetime import date, datetime, timedelta
-from flask import Blueprint, render_template, request, send_file
+from flask import Blueprint, render_template, request, send_file, abort
 from flask_login import login_required, current_user
 from app.models import Payment, Expense, Student, User
 from app.models.user import Role
@@ -8,12 +8,6 @@ from app.services.export_service import export_csv, export_excel, export_pdf_tab
 from app.utils.helpers import current_school_id, is_super_admin
 
 reports_bp = Blueprint("reports", __name__, template_folder="../templates/reports")
-
-
-def _school_id():
-    if current_user.role == Role.SUPER_ADMIN:
-        return request.args.get("school_id", type=int)
-    return current_user.school_id
 
 
 def _date_range():
@@ -48,7 +42,7 @@ def index():
 @reports_bp.route("/income")
 @login_required
 def income_report():
-    school_id = _school_id()
+    school_id = current_school_id()
     period, start_date, end_date = _date_range()
     query = Payment.query.filter(Payment.is_void.is_(False), Payment.payment_date >= start_date, Payment.payment_date <= end_date)
     if school_id is not None:
@@ -63,7 +57,7 @@ def income_report():
 @reports_bp.route("/expense")
 @login_required
 def expense_report():
-    school_id = _school_id()
+    school_id = current_school_id()
     period, start_date, end_date = _date_range()
     query = Expense.query.filter(Expense.expense_date >= start_date, Expense.expense_date <= end_date)
     if school_id is not None:
@@ -78,7 +72,7 @@ def expense_report():
 @reports_bp.route("/profit-loss")
 @login_required
 def profit_loss_report():
-    school_id = _school_id()
+    school_id = current_school_id()
     period, start_date, end_date = _date_range()
     income = stats.collections_between(school_id, start_date, end_date)
     expense = stats.expenses_between(school_id, start_date, end_date)
@@ -97,7 +91,7 @@ def profit_loss_report():
 @reports_bp.route("/collector-performance")
 @login_required
 def collector_performance_report():
-    school_id = _school_id()
+    school_id = current_school_id()
     period, start_date, end_date = _date_range()
     rows = stats.collector_performance(school_id, start_date, end_date)
     collectors = {u.id: u for u in User.query.filter(User.id.in_([r[0] for r in rows])).all()} if rows else {}
@@ -109,6 +103,12 @@ def collector_performance_report():
 @login_required
 def student_payment_history(student_id):
     student = Student.query.get_or_404(student_id)
+    # Cross-tenant guard: without this, any authenticated user (from any
+    # school) could view any student's payment history just by changing the
+    # id in the URL. This mirrors the same check every other student-detail
+    # view already applies.
+    if not is_super_admin() and student.school_id != current_school_id():
+        abort(403)
     payments = student.payments.order_by(Payment.payment_date.desc()).all()
     return render_template("reports/student_history.html", student=student, payments=payments)
 
@@ -116,7 +116,7 @@ def student_payment_history(student_id):
 @reports_bp.route("/outstanding")
 @login_required
 def outstanding_report():
-    school_id = _school_id()
+    school_id = current_school_id()
     query = Student.query.filter(Student.status == "active")
     if school_id is not None:
         query = query.filter(Student.school_id == school_id)
@@ -126,13 +126,13 @@ def outstanding_report():
     month_start = today.replace(day=1)
     paid, owing = stats.students_paid_vs_owing(school_id, month_start, today)
 
-    paid_ids = {
-        p.student_id
-        for p in Payment.query.filter(
-            Payment.is_void.is_(False), Payment.payment_date >= month_start, Payment.payment_date <= today
-        ).all()
-        if school_id is None or p.school_id == school_id
-    }
+    paid_query = Payment.query.filter(
+        Payment.is_void.is_(False), Payment.payment_date >= month_start, Payment.payment_date <= today
+    )
+    if school_id is not None:
+        paid_query = paid_query.filter(Payment.school_id == school_id)
+    paid_ids = {p.student_id for p in paid_query.with_entities(Payment.student_id).all()}
+
     outstanding_students = [s for s in students if s.id not in paid_ids]
     return render_template("reports/outstanding.html", students=outstanding_students, paid=paid, owing=owing)
 
@@ -140,7 +140,7 @@ def outstanding_report():
 @reports_bp.route("/export/<report_type>/<fmt>")
 @login_required
 def export_report(report_type, fmt):
-    school_id = _school_id()
+    school_id = current_school_id()
     period, start_date, end_date = _date_range()
 
     if report_type == "income":

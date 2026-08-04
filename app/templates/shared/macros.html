@@ -1,3 +1,21 @@
+{% macro csrf_field() %}
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{% endmacro %}
+
+{% macro delete_button(action_url, confirm_message="Are you sure you want to delete this record? This action cannot be undone.", label="", btn_class="btn btn-sm btn-outline-danger") %}
+<form method="POST" action="{{ action_url }}" class="d-inline" onsubmit="return confirmDelete('{{ confirm_message }}')">
+    {{ csrf_field() }}
+    <button type="submit" class="{{ btn_class }}">{% if label %}{{ label }}{% else %}<i class="bi bi-trash"></i>{% endif %}</button>
+</form>
+{% endmacro %}
+
+{% macro action_button(action_url, icon="bi-check-circle", btn_class="btn btn-sm btn-outline-secondary", confirm_message="") %}
+<form method="POST" action="{{ action_url }}" class="d-inline" {% if confirm_message %}onsubmit="return confirmDelete('{{ confirm_message }}')"{% endif %}>
+    {{ csrf_field() }}
+    <button type="submit" class="{{ btn_class }}"><i class="bi {{ icon }}"></i></button>
+</form>
+{% endmacro %}
+
 {% macro render_field(field, extra_class="") %}
 <div class="mb-3 {{ extra_class }}">
     {% if field.type != 'SubmitField' and field.type != 'BooleanField' %}
