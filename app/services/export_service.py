@@ -132,6 +132,9 @@ def generate_application_pdf(school, application):
     doc.build(elements)
     mem.seek(0)
     return mem
+
+
+def generate_receipt_pdf(school, student, payment, collector):
     mem = io.BytesIO()
     doc = SimpleDocTemplate(mem, pagesize=letter, topMargin=15 * mm, bottomMargin=15 * mm)
     styles = getSampleStyleSheet()
