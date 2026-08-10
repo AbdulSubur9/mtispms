@@ -7,6 +7,17 @@
     <a href="{{ url_for('payments.collect') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-search"></i> Search Instead</a>
 </div>
 <div class="card p-4" style="max-width: 600px;">
+    {% if quick_types %}
+    <label class="form-label small text-muted">Quick Amounts</label>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        {% for t in quick_types %}
+        <button type="button" class="btn btn-outline-success btn-sm quick-amount-btn"
+                data-amount="{{ t.amount }}" data-type-id="{{ t.id }}" data-locked="{{ 'true' if not t.allow_custom_amount else 'false' }}">
+            GH₵{{ "%.2f"|format(t.amount) }} {{ t.name }}
+        </button>
+        {% endfor %}
+    </div>
+    {% endif %}
     <form method="POST" novalidate>
         {{ form.hidden_tag() }}
         {{ render_field(form.student_id) }}
@@ -21,4 +32,29 @@
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.querySelectorAll('.quick-amount-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        const amountField = document.getElementById('amount');
+        const typeField = document.getElementById('custom_payment_type_id');
+        const locked = btn.dataset.locked === 'true';
+
+        if (amountField) {
+            amountField.value = btn.dataset.amount;
+            amountField.readOnly = locked;
+        }
+        if (typeField) {
+            typeField.value = btn.dataset.typeId;
+        }
+
+        document.querySelectorAll('.quick-amount-btn').forEach(function (b) {
+            b.classList.remove('btn-success'); b.classList.add('btn-outline-success');
+        });
+        btn.classList.remove('btn-outline-success'); btn.classList.add('btn-success');
+    });
+});
+</script>
 {% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import delete_button %}
+{% block title %}Grading Scale - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Grading Scale</h4>
+    <a href="{{ url_for('exams.create_grading_band') }}" class="btn brand-btn text-white btn-sm"><i class="bi bi-plus-lg"></i> Add Grade Band</a>
+</div>
+<p class="text-muted small">This is used to automatically assign a grade to every exam result based on percentage scored.</p>
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+            <thead class="table-light"><tr><th>Grade</th><th>Range</th><th>Remark</th><th></th></tr></thead>
+            <tbody>
+                {% for b in bands %}
+                <tr>
+                    <td class="fw-bold">{{ b.grade }}</td>
+                    <td>{{ "%.0f"|format(b.min_percentage) }}% - {{ "%.0f"|format(b.max_percentage) }}%</td>
+                    <td>{{ b.remark or '-' }}</td>
+                    <td class="text-end">{{ delete_button(url_for('exams.delete_grading_band', band_id=b.id), confirm_message='Delete grade ' ~ b.grade ~ '?') }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-center text-muted py-4">No grading bands configured.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -51,6 +51,9 @@ def create_application():
             emergency_contact_name=form.emergency_contact_name.data,
             emergency_contact_phone=form.emergency_contact_phone.data,
             emergency_contact_relationship=form.emergency_contact_relationship.data,
+            has_medical_condition=form.has_medical_condition.data,
+            medical_condition_details=form.medical_condition_details.data if form.has_medical_condition.data else None,
+            declaration_accepted=form.declaration_accepted.data,
             submitted_by_id=current_user.id,
             application_date=date.today(),
         )

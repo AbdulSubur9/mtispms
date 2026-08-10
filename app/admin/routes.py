@@ -3,10 +3,11 @@ from flask_login import login_required, current_user
 from app.extensions import db
 from app.models import School, User, AuditLog, SchoolPaymentType
 from app.models.user import Role
-from app.admin.forms import SchoolForm, UserForm, PaymentTypeForm
+from app.admin.forms import SchoolForm, UserForm, PaymentTypeForm, BrandingForm
 from app.utils.decorators import roles_required
 from app.utils.helpers import current_school_id, is_super_admin
 from app.utils.db_safety import safe_commit
+from app.services.storage_service import save_image, delete_file, StorageError
 
 admin_bp = Blueprint("admin", __name__, template_folder="../templates/admin")
 
@@ -212,6 +213,65 @@ def delete_user(user_id):
     return redirect(url_for("admin.list_users"))
 
 
+# ---------- School Branding (Settings) ----------
+
+@admin_bp.route("/branding", methods=["GET", "POST"])
+@login_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN)
+def branding():
+    school_id = current_school_id()
+    if school_id is None:
+        flash("Select a school first.", "warning")
+        return redirect(url_for("dashboard.index"))
+    school = School.query.get_or_404(school_id)
+
+    form = BrandingForm(obj=school)
+    if form.validate_on_submit():
+        try:
+            new_logo = save_image(form.logo.data, subfolder="branding", old_reference=school.logo)
+        except StorageError as exc:
+            form.logo.errors.append(exc.user_message)
+            return render_template("admin/branding.html", form=form, school=school)
+
+        if new_logo:
+            school.logo = new_logo
+        school.motto = form.motto.data
+        school.website = form.website.data
+        school.document_header_text = form.document_header_text.data
+        school.document_footer_text = form.document_footer_text.data
+
+        if safe_commit(log_context=f"update_branding school={school_id}"):
+            AuditLog.log(
+                "settings_changed", description=f"Branding updated for {school.name}",
+                entity_type="school", entity_id=school.id, user=current_user, school_id=school_id,
+            )
+            flash("Branding updated.", "success")
+            return redirect(url_for("admin.branding"))
+
+    return render_template("admin/branding.html", form=form, school=school)
+
+
+@admin_bp.route("/branding/remove-logo", methods=["POST"])
+@login_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN)
+def remove_logo():
+    school_id = current_school_id()
+    if school_id is None:
+        abort(403)
+    school = School.query.get_or_404(school_id)
+    old_logo = school.logo
+    school.logo = None
+    if safe_commit(log_context=f"remove_logo school={school_id}"):
+        if old_logo:
+            delete_file(old_logo)
+        AuditLog.log(
+            "settings_changed", description=f"Logo removed for {school.name}",
+            entity_type="school", entity_id=school.id, user=current_user, school_id=school_id,
+        )
+        flash("Logo removed.", "info")
+    return redirect(url_for("admin.branding"))
+
+
 # ---------- Payment Types (Settings) ----------
 
 @admin_bp.route("/payment-types")
@@ -245,7 +305,8 @@ def create_payment_type():
     if form.validate_on_submit():
         pt = SchoolPaymentType(
             school_id=school_id, name=form.name.data.strip(), frequency=form.frequency.data,
-            amount=form.amount.data, description=form.description.data, is_active=form.is_active.data,
+            amount=form.amount.data, allow_custom_amount=form.allow_custom_amount.data,
+            description=form.description.data, is_active=form.is_active.data,
         )
         db.session.add(pt)
         if safe_commit(
@@ -270,6 +331,7 @@ def edit_payment_type(type_id):
         pt.name = form.name.data.strip()
         pt.frequency = form.frequency.data
         pt.amount = form.amount.data
+        pt.allow_custom_amount = form.allow_custom_amount.data
         pt.description = form.description.data
         pt.is_active = form.is_active.data
         if safe_commit(

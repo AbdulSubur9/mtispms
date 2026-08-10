@@ -26,10 +26,17 @@
 </div>
 
 {% if classroom %}
-<form method="POST">
+<form method="POST" id="attendanceForm">
     {{ csrf_field() }}
     <input type="hidden" name="class_id" value="{{ classroom.id }}">
     <input type="hidden" name="date" value="{{ attendance_date }}">
+    {% if students %}
+    <div class="d-flex justify-content-end mb-2">
+        <button type="button" id="markAllPresentBtn" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-check2-all"></i> Mark Everyone Present
+        </button>
+    </div>
+    {% endif %}
     <div class="card table-card">
         <div class="table-responsive">
             <table class="table mb-0 align-middle">
@@ -40,7 +47,7 @@
                     <tr>
                         <td>{{ s.full_name }} <span class="text-muted small">({{ s.student_id }})</span></td>
                         <td>
-                            <select name="status_{{ s.id }}" class="form-select form-select-sm" style="width: 140px;">
+                            <select name="status_{{ s.id }}" class="form-select form-select-sm attendance-status-select" style="width: 140px;">
                                 {% for st in statuses %}
                                 <option value="{{ st }}" {{ 'selected' if (rec and rec.status == st) or (not rec and st == 'present') }}>{{ status_labels[st] }}</option>
                                 {% endfor %}
@@ -62,4 +69,17 @@
 {% else %}
 <p class="text-muted text-center py-5">Select a class above to take attendance.</p>
 {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const markAllBtn = document.getElementById('markAllPresentBtn');
+if (markAllBtn) {
+    markAllBtn.addEventListener('click', function () {
+        document.querySelectorAll('.attendance-status-select').forEach(function (select) {
+            select.value = 'present';
+        });
+    });
+}
+</script>
 {% endblock %}

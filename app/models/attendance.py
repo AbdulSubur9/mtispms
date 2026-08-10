@@ -6,9 +6,10 @@ class AttendanceStatus:
     PRESENT = "present"
     ABSENT = "absent"
     LATE = "late"
+    EXCUSED = "excused"
 
-    ALL = [PRESENT, ABSENT, LATE]
-    LABELS = {PRESENT: "Present", ABSENT: "Absent", LATE: "Late"}
+    ALL = [PRESENT, ABSENT, LATE, EXCUSED]
+    LABELS = {PRESENT: "Present", ABSENT: "Absent", LATE: "Late", EXCUSED: "Excused"}
 
 
 class Attendance(db.Model):

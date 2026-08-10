@@ -4,7 +4,7 @@ from app.extensions import db
 from app.models import ClassRoom, User, Student, AuditLog
 from app.models.user import Role
 from app.classes.forms import ClassRoomForm
-from app.utils.decorators import write_access_required
+from app.utils.decorators import write_access_required, roles_required
 from app.utils.helpers import scope_query_to_school, current_school_id, is_super_admin
 from app.utils.db_safety import safe_commit
 
@@ -51,7 +51,7 @@ def view_class(class_id):
 @login_required
 @write_access_required
 def create_class():
-    if current_user.role == Role.TEACHER:
+    if current_user.role not in (Role.SUPER_ADMIN, Role.SCHOOL_ADMIN):
         abort(403)
     school_id = current_school_id()
     if school_id is None:
@@ -84,7 +84,7 @@ def create_class():
 @login_required
 @write_access_required
 def edit_class(class_id):
-    if current_user.role == Role.TEACHER:
+    if current_user.role not in (Role.SUPER_ADMIN, Role.SCHOOL_ADMIN):
         abort(403)
     classroom = ClassRoom.query.get_or_404(class_id)
     if not is_super_admin() and classroom.school_id != current_school_id():
@@ -136,7 +136,7 @@ def delete_class(class_id):
 @login_required
 @write_access_required
 def assign_students(class_id):
-    if current_user.role == Role.TEACHER:
+    if current_user.role not in (Role.SUPER_ADMIN, Role.SCHOOL_ADMIN):
         abort(403)
     classroom = ClassRoom.query.get_or_404(class_id)
     if not is_super_admin() and classroom.school_id != current_school_id():

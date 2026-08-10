@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - {{ app_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-1">Welcome back, {{ current_user.first_name }}</h4>
+<p class="text-muted mb-4 small">Your classes, attendance, and academic activity.</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card d-flex align-items-center gap-3">
+            <div class="kpi-icon"><i class="bi bi-collection"></i></div>
+            <div>
+                <div class="kpi-value">{{ my_classes|length }}</div>
+                <div class="kpi-label">My Classes</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi-card d-flex align-items-center gap-3">
+            <div class="kpi-icon" style="background:#2d6a4f;"><i class="bi bi-people"></i></div>
+            <div>
+                <div class="kpi-value">{{ my_classes | sum(attribute='student_count') }}</div>
+                <div class="kpi-label">Total Students</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-6">
+        <div class="kpi-card d-flex align-items-center gap-3">
+            <div class="kpi-icon" style="background:{{ '#40916c' if my_classes|length == attendance_taken_today|length else '#e76f51' }};"><i class="bi bi-clipboard-check"></i></div>
+            <div>
+                <div class="kpi-value">{{ attendance_taken_today|length }} / {{ my_classes|length }}</div>
+                <div class="kpi-label">Classes with Attendance Taken Today</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">My Classes</h6>
+                <a href="{{ url_for('classes.list_classes') }}" class="btn btn-sm btn-outline-secondary">View All</a>
+            </div>
+            {% for c in my_classes %}
+            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div>
+                    <div class="fw-semibold">{{ c.name }}</div>
+                    <div class="text-muted small">{{ c.student_count }} students</div>
+                </div>
+                <div class="d-flex gap-1">
+                    {% if c.id in attendance_taken_today %}
+                    <span class="badge bg-success align-self-center">Attendance Taken</span>
+                    {% else %}
+                    <a href="{{ url_for('attendance.take_attendance', class_id=c.id) }}" class="btn btn-sm btn-outline-warning">Take Attendance</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted small mb-0">No classes assigned to you yet. Contact your School Admin.</p>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Recent Examinations</h6>
+                <a href="{{ url_for('exams.list_exams') }}" class="btn btn-sm btn-outline-secondary">View All</a>
+            </div>
+            {% for exam in recent_exams %}
+            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div>
+                    <div class="fw-semibold">{{ exam.name }}</div>
+                    <div class="text-muted small">{{ exam.classroom.name }}</div>
+                </div>
+                <a href="{{ url_for('exams.view_exam', exam_id=exam.id) }}" class="btn btn-sm btn-outline-secondary">View</a>
+            </div>
+            {% else %}
+            <p class="text-muted small mb-0">No examinations yet.</p>
+            {% endfor %}
+            <a href="{{ url_for('exams.create_exam') }}" class="btn btn-sm brand-btn text-white mt-3"><i class="bi bi-plus-lg"></i> Create Examination</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

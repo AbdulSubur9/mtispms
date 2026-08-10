@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import render_field %}
+{% block title %}{{ title }} - {{ app_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-3">{{ title }}</h4>
+<div class="card p-4" style="max-width: 500px;">
+    <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        {{ render_field(form.grade) }}
+        <div class="row"><div class="col-md-6">{{ render_field(form.min_percentage) }}</div><div class="col-md-6">{{ render_field(form.max_percentage) }}</div></div>
+        {{ render_field(form.remark) }}
+        <div class="d-flex gap-2">
+            {{ form.submit(class="btn brand-btn text-white") }}
+            <a href="{{ url_for('exams.grading_scale') }}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -29,6 +29,23 @@ def _populate_custom_type_choices(form, school_id):
     ]
 
 
+def _quick_payment_types(school_id):
+    """Active payment types with a default amount set, for the "quick
+    amount" buttons on the payment form (section 8) - e.g. [ GH₵5.00 Weekly
+    ] [ GH₵20.00 Monthly ]. Returned as plain dicts, JSON-serializable for
+    the template's JS."""
+    q = SchoolPaymentType.query.filter(SchoolPaymentType.is_active.is_(True), SchoolPaymentType.amount.isnot(None))
+    if school_id is not None:
+        q = q.filter_by(school_id=school_id)
+    return [
+        {
+            "id": t.id, "name": t.name, "amount": float(t.amount),
+            "allow_custom_amount": t.allow_custom_amount, "frequency": t.frequency_label,
+        }
+        for t in q.order_by(SchoolPaymentType.amount).all()
+    ]
+
+
 @payments_bp.route("/")
 @login_required
 def list_payments():
@@ -95,6 +112,7 @@ def create_payment():
     form = PaymentForm()
     _populate_student_choices(form, school_id)
     _populate_custom_type_choices(form, school_id)
+    quick_types = _quick_payment_types(school_id)
 
     preselected_student_id = request.args.get("student_id", type=int)
     if request.method == "GET":
@@ -104,6 +122,28 @@ def create_payment():
 
     if form.validate_on_submit():
         custom_type_id = form.custom_payment_type_id.data or None
+
+        # Section 8: "Allow custom amount only where the user's role has
+        # permission." A Collector using a payment type that has
+        # allow_custom_amount=False must submit EXACTLY that type's amount -
+        # enforced server-side, not just by disabling the input client-side,
+        # since a disabled HTML field can still be edited via devtools.
+        if custom_type_id and current_user.role == Role.COLLECTOR:
+            selected_type = SchoolPaymentType.query.get(custom_type_id)
+            if (
+                selected_type and not selected_type.allow_custom_amount
+                and selected_type.amount is not None
+                and float(form.amount.data) != float(selected_type.amount)
+            ):
+                flash(
+                    f"The amount for \"{selected_type.name}\" is fixed at GH₵{selected_type.amount:.2f} "
+                    f"and can't be changed. Contact your School Admin if this needs to be different.",
+                    "danger",
+                )
+                return render_template(
+                    "payments/form.html", form=form, title="Record Payment", quick_types=quick_types
+                )
+
         payment = Payment(
             school_id=school_id,
             student_id=form.student_id.data,
@@ -118,7 +158,7 @@ def create_payment():
         db.session.add(payment)
 
         if not safe_commit(log_context=f"create_payment school={school_id}"):
-            return render_template("payments/form.html", form=form, title="Record Payment")
+            return render_template("payments/form.html", form=form, title="Record Payment", quick_types=quick_types)
 
         db.session.add(
             Notification(
@@ -137,7 +177,7 @@ def create_payment():
         flash(f"Payment recorded. Receipt #{payment.receipt_number}", "success")
         return redirect(url_for("payments.view_receipt", payment_id=payment.id))
 
-    return render_template("payments/form.html", form=form, title="Record Payment")
+    return render_template("payments/form.html", form=form, title="Record Payment", quick_types=quick_types)
 
 
 @payments_bp.route("/<int:payment_id>/receipt")

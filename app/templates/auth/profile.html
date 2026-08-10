@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import render_field, csrf_field %}
+{% block title %}My Profile - {{ app_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-3">My Profile</h4>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card p-3 text-center">
+            {% if current_user.photo %}
+            <img src="{{ url_for('static', filename=current_user.photo) }}" class="rounded-circle mx-auto mb-3" style="width: 110px; height: 110px; object-fit: cover;">
+            <form method="POST" action="{{ url_for('auth.remove_profile_photo') }}" onsubmit="return confirmDelete('Remove your profile photo?')">
+                {{ csrf_field() }}
+                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Remove Photo</button>
+            </form>
+            {% else %}
+            <div class="avatar-circle mx-auto mb-3" style="width: 110px; height: 110px; font-size: 2rem;">
+                {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+            </div>
+            <p class="text-muted small">No profile photo yet.</p>
+            {% endif %}
+            <h6 class="mb-0 mt-2">{{ current_user.full_name }}</h6>
+            <p class="text-muted small mb-0">{{ current_user.role_label }}</p>
+            {% if current_user.school %}<p class="text-muted small">{{ current_user.school.name }}</p>{% endif %}
+            <a href="{{ url_for('auth.change_password') }}" class="btn btn-sm btn-outline-secondary mt-2"><i class="bi bi-key"></i> Change Password</a>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card p-4">
+            <form method="POST" enctype="multipart/form-data" novalidate>
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <div class="col-md-6">{{ render_field(form.first_name) }}</div>
+                    <div class="col-md-6">{{ render_field(form.last_name) }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">{{ render_field(form.email) }}</div>
+                    <div class="col-md-6">{{ render_field(form.phone) }}</div>
+                </div>
+                {{ render_field(form.photo) }}
+                {{ form.submit(class="btn brand-btn text-white") }}
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

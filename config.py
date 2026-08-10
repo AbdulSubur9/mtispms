@@ -36,13 +36,34 @@ class Config:
     MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", MAIL_USERNAME)
 
     ITEMS_PER_PAGE = int(os.environ.get("ITEMS_PER_PAGE", 20))
-    UPLOAD_FOLDER = os.environ.get(
-        "UPLOAD_FOLDER", os.path.join(basedir, "app", "static", "uploads")
-    )
+
+    # UPLOAD_FOLDER must always be an ABSOLUTE path. A relative value here
+    # (e.g. the "app/static/uploads" shown in .env.example) used to be
+    # passed straight through and resolved against the process's current
+    # working directory at runtime - which differs between `flask run`,
+    # gunicorn, and Render, and isn't guaranteed to exist or be writable.
+    # That mismatch was the root cause of the student-photo-upload 500:
+    # os.makedirs()/file.save() would throw in save_upload(), which had no
+    # error handling, so the exception reached the user as a raw 500.
+    _upload_folder_env = os.environ.get("UPLOAD_FOLDER")
+    if _upload_folder_env and os.path.isabs(_upload_folder_env):
+        UPLOAD_FOLDER = _upload_folder_env
+    elif _upload_folder_env:
+        UPLOAD_FOLDER = os.path.join(basedir, _upload_folder_env)
+    else:
+        UPLOAD_FOLDER = os.path.join(basedir, "app", "static", "uploads")
+
     MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_LENGTH", 5 * 1024 * 1024))
     ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
     ALLOWED_UPLOAD_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "pdf"}
     ALLOWED_EXCEL_EXTENSIONS = {"xlsx", "xls"}
+
+    # Storage backend for uploaded files (student photos, user profile
+    # photos, school logos, expense receipts). "local" writes to
+    # UPLOAD_FOLDER on this server's disk, which does NOT persist across
+    # Render deploys/restarts - see app/services/storage_service.py for the
+    # pluggable backend interface intended for S3/Cloudinary/etc.
+    STORAGE_BACKEND = os.environ.get("STORAGE_BACKEND", "local")
 
 
 class DevelopmentConfig(Config):

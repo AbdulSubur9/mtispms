@@ -1,9 +1,23 @@
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, SelectField, PasswordField, BooleanField, SubmitField, DecimalField, TextAreaField
 from wtforms.validators import DataRequired, Email, Length, Optional, EqualTo, ValidationError
 from app.models.user import Role, User
 from app.models.school import School
 from app.models.payment_type import PaymentFrequency
+
+
+class BrandingForm(FlaskForm):
+    logo = FileField("School Logo", validators=[Optional(), FileAllowed(["png", "jpg", "jpeg"], "Images only")])
+    motto = StringField("Motto", validators=[Optional(), Length(max=200)])
+    website = StringField("Website", validators=[Optional(), Length(max=200)])
+    document_header_text = StringField(
+        "Extra Header Text (shown on printed documents)", validators=[Optional(), Length(max=250)]
+    )
+    document_footer_text = StringField(
+        "Extra Footer Text (shown on printed documents)", validators=[Optional(), Length(max=250)]
+    )
+    submit = SubmitField("Save Branding")
 
 
 class SchoolForm(FlaskForm):
@@ -78,6 +92,10 @@ class PaymentTypeForm(FlaskForm):
         validators=[DataRequired()],
     )
     amount = DecimalField("Default Amount (optional)", places=2, validators=[Optional()])
+    allow_custom_amount = BooleanField(
+        "Allow collectors to enter a different amount", default=True,
+        description="Turn off to lock collectors to the exact default amount above (prevents mis-keyed fees).",
+    )
     description = TextAreaField("Description", validators=[Optional(), Length(max=250)])
     is_active = BooleanField("Active", default=True)
     submit = SubmitField("Save Payment Type")

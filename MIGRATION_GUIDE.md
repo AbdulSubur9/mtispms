@@ -1,5 +1,15 @@
 # Database Migration Guide — Code Review Update
 
+> **Update (Professional Upgrade pass):** this guide originally covered the
+> composite-unique-constraint fix. This pass adds several new tables
+> (`subjects`, `grading_scale_bands`, `exams`, `exam_subjects`, `results`)
+> and new columns on existing tables (`schools.motto/website/document_header_text/document_footer_text`,
+> `school_payment_types.allow_custom_amount`, `student_applications.has_medical_condition/medical_condition_details/declaration_accepted`).
+> All of these are additive (new tables/nullable columns) and need no
+> special handling beyond the standard `flask db migrate && flask db upgrade`
+> - only the original student/payment/expense ID uniqueness fix below needs
+> the manual constraint-drop step on an existing production database.
+
 This update changes the schema in ways that matter for any environment that
 already has data (i.e. not a fresh `flask db upgrade` on an empty database).
 

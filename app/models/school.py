@@ -12,6 +12,12 @@ class School(db.Model):
     phone = db.Column(db.String(30))
     email = db.Column(db.String(120))
     logo = db.Column(db.String(250))
+    # Extensible branding fields (section 4) - kept optional so schools that
+    # don't set them still get a clean fallback everywhere they're used.
+    motto = db.Column(db.String(200))
+    website = db.Column(db.String(200))
+    document_header_text = db.Column(db.String(250))
+    document_footer_text = db.Column(db.String(250))
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -23,6 +29,15 @@ class School(db.Model):
 
     def __repr__(self):
         return f"<School {self.name}>"
+
+    @property
+    def logo_url(self):
+        """Browser-loadable URL for the school's logo, or None if it hasn't
+        set one - callers should fall back to a placeholder/initials."""
+        if not self.logo:
+            return None
+        from app.services.storage_service import resolve_url
+        return resolve_url(self.logo)
 
     @property
     def total_income(self):

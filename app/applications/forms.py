@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, DateField, TextAreaField, SubmitField
+from wtforms import StringField, SelectField, DateField, TextAreaField, BooleanField, SubmitField
 from wtforms.validators import DataRequired, Optional, Length
 
 
@@ -18,5 +18,15 @@ class StudentApplicationForm(FlaskForm):
     emergency_contact_name = StringField("Emergency Contact Name", validators=[Optional(), Length(max=150)])
     emergency_contact_phone = StringField("Emergency Contact Phone", validators=[Optional(), Length(max=30)])
     emergency_contact_relationship = StringField("Relationship", validators=[Optional(), Length(max=80)])
+
+    has_medical_condition = BooleanField("Student has a medical condition")
+    medical_condition_details = TextAreaField(
+        "Medical Condition Details", validators=[Optional(), Length(max=500)]
+    )
+
+    declaration_accepted = BooleanField(
+        "I declare that the information provided is true and accurate to the best of my knowledge",
+        validators=[DataRequired(message="The declaration must be accepted to submit an application.")],
+    )
 
     submit = SubmitField("Submit Application")

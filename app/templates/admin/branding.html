@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import render_field, csrf_field %}
+{% block title %}School Branding - {{ app_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-3">School Branding</h4>
+<p class="text-muted small">
+    Your logo automatically appears on payment receipts, admission forms, attendance reports,
+    exam result sheets, and financial reports.
+</p>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card p-3 text-center">
+            <h6 class="mb-3">Current Logo</h6>
+            {% if school.logo_url %}
+            <img src="{{ school.logo_url }}" alt="{{ school.name }} logo" class="img-fluid mb-3" style="max-height: 140px; object-fit: contain;">
+            <form method="POST" action="{{ url_for('admin.remove_logo') }}" onsubmit="return confirmDelete('Remove the school logo?')">
+                {{ csrf_field() }}
+                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Remove Logo</button>
+            </form>
+            {% else %}
+            <div class="text-muted py-4">
+                <i class="bi bi-image" style="font-size: 2.5rem;"></i>
+                <p class="small mt-2 mb-0">No logo uploaded yet.<br>Documents will show the school name only.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card p-4">
+            <form method="POST" enctype="multipart/form-data" novalidate>
+                {{ form.hidden_tag() }}
+                {{ render_field(form.logo) }}
+                <p class="text-muted small mt-n2 mb-3">PNG or JPG, ideally a transparent-background logo. Max 5MB.</p>
+                {{ render_field(form.motto) }}
+                {{ render_field(form.website) }}
+                {{ render_field(form.document_header_text) }}
+                {{ render_field(form.document_footer_text) }}
+                {{ form.submit(class="btn brand-btn text-white") }}
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

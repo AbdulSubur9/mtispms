@@ -18,7 +18,7 @@ class StudentForm(FlaskForm):
         choices=[("active", "Active"), ("inactive", "Inactive"), ("deactivated", "Deactivated")],
         validators=[DataRequired()],
     )
-    photo = FileField("Photo", validators=[FileAllowed(["png", "jpg", "jpeg", "gif"], "Images only")])
+    photo = FileField("Photo", validators=[Optional(), FileAllowed(["png", "jpg", "jpeg", "gif"], "Images only")])
     submit = SubmitField("Save Student")
 
 

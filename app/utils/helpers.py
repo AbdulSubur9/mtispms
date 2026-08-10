@@ -1,27 +1,11 @@
-import os
-import uuid
-from flask import current_app, session, request
-from werkzeug.utils import secure_filename
+from flask import session, request
 from flask_login import current_user
 from app.models.user import Role
 
-
-def allowed_file(filename, allowed_set):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_set
-
-
-def save_upload(file_storage, subfolder="misc"):
-    """Save an uploaded file securely, return the relative path (or None)."""
-    if not file_storage or file_storage.filename == "":
-        return None
-    filename = secure_filename(file_storage.filename)
-    ext = filename.rsplit(".", 1)[1].lower() if "." in filename else ""
-    unique_name = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
-    folder = os.path.join(current_app.config["UPLOAD_FOLDER"], subfolder)
-    os.makedirs(folder, exist_ok=True)
-    path = os.path.join(folder, unique_name)
-    file_storage.save(path)
-    return f"uploads/{subfolder}/{unique_name}"
+# NOTE: file-upload handling (save_upload, allowed_file) moved to
+# app.services.storage_service - use save_image()/save_document() there
+# instead. Kept out of this module so there's exactly one place uploads are
+# validated, error-handled, and (eventually) backed by object storage.
 
 
 def is_super_admin():

@@ -1,11 +1,12 @@
 from datetime import date, datetime, timedelta
 from flask import Blueprint, render_template, request, send_file, abort
 from flask_login import login_required, current_user
-from app.models import Payment, Expense, Student, User
+from app.models import Payment, Expense, Student, User, School
 from app.models.user import Role
 from app.services import stats_service as stats
 from app.services.export_service import export_csv, export_excel, export_pdf_table
 from app.utils.helpers import current_school_id, is_super_admin
+from app.utils.decorators import roles_required
 
 reports_bp = Blueprint("reports", __name__, template_folder="../templates/reports")
 
@@ -35,12 +36,14 @@ def _date_range():
 
 @reports_bp.route("/")
 @login_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN, Role.ACCOUNTANT)
 def index():
     return render_template("reports/index.html")
 
 
 @reports_bp.route("/income")
 @login_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN, Role.ACCOUNTANT)
 def income_report():
     school_id = current_school_id()
     period, start_date, end_date = _date_range()
@@ -56,6 +59,7 @@ def income_report():
 
 @reports_bp.route("/expense")
 @login_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN, Role.ACCOUNTANT)
 def expense_report():
     school_id = current_school_id()
     period, start_date, end_date = _date_range()
@@ -71,6 +75,7 @@ def expense_report():
 
 @reports_bp.route("/profit-loss")
 @login_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN, Role.ACCOUNTANT)
 def profit_loss_report():
     school_id = current_school_id()
     period, start_date, end_date = _date_range()
@@ -90,6 +95,7 @@ def profit_loss_report():
 
 @reports_bp.route("/collector-performance")
 @login_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN, Role.ACCOUNTANT)
 def collector_performance_report():
     school_id = current_school_id()
     period, start_date, end_date = _date_range()
@@ -101,6 +107,7 @@ def collector_performance_report():
 
 @reports_bp.route("/student-history/<int:student_id>")
 @login_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN, Role.ACCOUNTANT, Role.COLLECTOR)
 def student_payment_history(student_id):
     student = Student.query.get_or_404(student_id)
     # Cross-tenant guard: without this, any authenticated user (from any
@@ -115,6 +122,7 @@ def student_payment_history(student_id):
 
 @reports_bp.route("/outstanding")
 @login_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN, Role.ACCOUNTANT)
 def outstanding_report():
     school_id = current_school_id()
     query = Student.query.filter(Student.status == "active")
@@ -139,6 +147,7 @@ def outstanding_report():
 
 @reports_bp.route("/export/<report_type>/<fmt>")
 @login_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN, Role.ACCOUNTANT)
 def export_report(report_type, fmt):
     school_id = current_school_id()
     period, start_date, end_date = _date_range()
@@ -179,7 +188,8 @@ def export_report(report_type, fmt):
         return send_file(mem, as_attachment=True, download_name=f"{report_type}_report.xlsx",
                           mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     elif fmt == "pdf":
-        mem = export_pdf_table(title, headers, rows, subtitle=subtitle)
+        school = School.query.get(school_id) if school_id else None
+        mem = export_pdf_table(title, headers, rows, subtitle=subtitle, school=school)
         return send_file(mem, as_attachment=True, download_name=f"{report_type}_report.pdf", mimetype="application/pdf")
 
     return "Unsupported format", 400

@@ -39,6 +39,14 @@ class StudentApplication(db.Model):
     emergency_contact_phone = db.Column(db.String(30))
     emergency_contact_relationship = db.Column(db.String(80))
 
+    # Health information (matches the reference admission form's Y/N +
+    # details structure)
+    has_medical_condition = db.Column(db.Boolean, default=False)
+    medical_condition_details = db.Column(db.String(500))
+
+    # Declaration
+    declaration_accepted = db.Column(db.Boolean, default=False)
+
     status = db.Column(db.String(20), default=ApplicationStatus.PENDING)
     submitted_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     application_date = db.Column(db.Date, default=date.today)

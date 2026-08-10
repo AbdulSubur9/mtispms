@@ -10,6 +10,7 @@ from app.models.audit_log import AuditLog
 from app.models.notification import Notification
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.student_application import StudentApplication, ApplicationStatus
+from app.models.exam import Subject, GradingScaleBand, Exam, ExamSubject, Result
 
 __all__ = [
     "School",
@@ -29,4 +30,9 @@ __all__ = [
     "AttendanceStatus",
     "StudentApplication",
     "ApplicationStatus",
+    "Subject",
+    "GradingScaleBand",
+    "Exam",
+    "ExamSubject",
+    "Result",
 ]

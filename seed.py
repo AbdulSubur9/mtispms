@@ -21,7 +21,7 @@ from app import create_app
 from app.extensions import db
 from app.models import (
     School, User, Student, ClassRoom, Payment, Expense, AuditLog, Notification,
-    SchoolPaymentType, Attendance, StudentApplication,
+    SchoolPaymentType, Attendance, StudentApplication, Subject, GradingScaleBand, Exam, ExamSubject, Result,
 )
 from app.models.user import Role
 from app.models.payment import PaymentType
@@ -66,9 +66,17 @@ def _seed_school(name, code, address, phone, email, admin_username, admin_passwo
     db.session.flush()
 
     # Custom payment types for this school (item 6)
-    for pt_name, freq, amt in [("Saturday Payment", PaymentFrequency.WEEKLY, 20),
-                                ("First Term Fees", PaymentFrequency.TERMLY, 300)]:
-        db.session.add(SchoolPaymentType(school_id=school.id, name=pt_name, frequency=freq, amount=amt))
+    # Section 8's required defaults, plus a couple of school-specific
+    # examples to demonstrate custom payment types.
+    for pt_name, freq, amt, lockable in [
+        ("Weekly Payment", PaymentFrequency.WEEKLY, 5, False),
+        ("Monthly Contribution", PaymentFrequency.MONTHLY, 20, False),
+        ("Saturday Payment", PaymentFrequency.WEEKLY, 20, True),
+        ("First Term Fees", PaymentFrequency.TERMLY, 300, True),
+    ]:
+        db.session.add(SchoolPaymentType(
+            school_id=school.id, name=pt_name, frequency=freq, amount=amt, allow_custom_amount=lockable,
+        ))
 
     # Every school independently starts its numbering at #0001 - this is the
     # exact scenario that used to collide under the old global-unique schema.
@@ -129,6 +137,39 @@ def _seed_school(name, code, address, phone, email, admin_username, admin_passwo
         guardian_name="Prospective Guardian", guardian_phone="+233-200000000",
         submitted_by_id=admin.id, application_date=date.today(),
     ))
+
+    # Subjects, default grading scale, and a sample exam with results
+    subject_names = ["Qur'an", "Arabic", "Islamic Studies", "Hadith", "Fiqh"]
+    subjects = []
+    for name in subject_names:
+        subj = Subject(school_id=school.id, name=name)
+        db.session.add(subj)
+        subjects.append(subj)
+    db.session.flush()
+
+    for band in GradingScaleBand.default_scale_for(school.id):
+        db.session.add(band)
+
+    exam = Exam(
+        school_id=school.id, class_id=classroom.id, created_by_id=teacher.id,
+        name="First Term Examination 2026", exam_date=date.today(),
+    )
+    db.session.add(exam)
+    db.session.flush()
+
+    exam_subjects = []
+    for subj in subjects:
+        es = ExamSubject(exam_id=exam.id, subject_id=subj.id, max_marks=100)
+        db.session.add(es)
+        exam_subjects.append(es)
+    db.session.flush()
+
+    for s in students[: min(10, len(students))]:
+        for es in exam_subjects:
+            db.session.add(Result(
+                school_id=school.id, exam_subject_id=es.id, student_id=s.id,
+                recorded_by_id=teacher.id, marks_obtained=random.randint(40, 100),
+            ))
 
     db.session.add(Notification(
         school_id=school.id, title="Welcome to MT-ISPMS",

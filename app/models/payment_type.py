@@ -36,6 +36,11 @@ class SchoolPaymentType(db.Model):
     name = db.Column(db.String(100), nullable=False)
     frequency = db.Column(db.String(20), nullable=False, default=PaymentFrequency.WEEKLY)
     amount = db.Column(db.Numeric(12, 2), nullable=True)  # suggested/default amount; collectors can still override
+    # When False, Collectors must use `amount` as-is (no free-typing a
+    # different number) - prevents accidental mis-keyed amounts for
+    # standard fees. School Admin/Super Admin/Accountant can always
+    # override regardless, since they're more trusted roles.
+    allow_custom_amount = db.Column(db.Boolean, default=True)
     description = db.Column(db.String(250))
     is_active = db.Column(db.Boolean, default=True)
 

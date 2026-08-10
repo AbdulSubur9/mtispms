@@ -3,18 +3,14 @@
 {% block title %}{{ title }} - {{ app_name }}{% endblock %}
 {% block content %}
 <h4 class="mb-3">{{ title }}</h4>
-<div class="card p-4" style="max-width: 600px;">
+<div class="card p-4" style="max-width: 500px;">
     <form method="POST" novalidate>
         {{ form.hidden_tag() }}
         {{ render_field(form.name) }}
-        {{ render_field(form.frequency) }}
-        {{ render_field(form.amount) }}
-        {{ render_field(form.allow_custom_amount) }}
-        {{ render_field(form.description) }}
         {{ render_field(form.is_active) }}
         <div class="d-flex gap-2">
             {{ form.submit(class="btn brand-btn text-white") }}
-            <a href="{{ url_for('admin.list_payment_types') }}" class="btn btn-outline-secondary">Cancel</a>
+            <a href="{{ url_for('exams.list_subjects') }}" class="btn btn-outline-secondary">Cancel</a>
         </div>
     </form>
 </div>

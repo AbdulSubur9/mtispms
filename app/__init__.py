@@ -1,7 +1,7 @@
 import os
 import logging
 from logging.handlers import RotatingFileHandler
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, url_for
 from flask_login import current_user
 from config import config_by_name
 from app.extensions import db, migrate, login_manager, csrf, mail
@@ -43,6 +43,7 @@ def create_app(config_name=None):
     from app.attendance.routes import attendance_bp
     from app.applications.routes import applications_bp
     from app.notifications.routes import notifications_bp
+    from app.exams.routes import exams_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(dashboard_bp, url_prefix="/")
@@ -57,6 +58,7 @@ def create_app(config_name=None):
     app.register_blueprint(attendance_bp, url_prefix="/attendance")
     app.register_blueprint(applications_bp, url_prefix="/applications")
     app.register_blueprint(notifications_bp, url_prefix="/notifications")
+    app.register_blueprint(exams_bp, url_prefix="/exams")
 
     # ---- Context processors ----
     @app.context_processor
@@ -93,6 +95,13 @@ def create_app(config_name=None):
     @app.errorhandler(404)
     def not_found(e):
         return render_template("errors/404.html"), 404
+
+    @app.errorhandler(413)
+    def file_too_large(e):
+        from flask import flash, redirect, request
+        max_mb = app.config.get("MAX_CONTENT_LENGTH", 5 * 1024 * 1024) // (1024 * 1024)
+        flash(f"That upload is too large. Maximum file size is {max_mb}MB.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index")), 302
 
     @app.errorhandler(500)
     def server_error(e):

@@ -16,6 +16,9 @@
         <a href="{{ url_for('attendance.take_attendance') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('attendance.') }}">
             <i class="bi bi-clipboard-check"></i><span>Attendance</span>
         </a>
+        <a href="{{ url_for('exams.list_exams') }}" class="nav-link {{ 'active' if request.blueprint == 'exams' }}">
+            <i class="bi bi-mortarboard"></i><span>Exams &amp; Results</span>
+        </a>
 
         {% else %}
         <a href="{{ url_for('students.list_students') }}" class="nav-link {{ 'active' if request.blueprint == 'students' and request.endpoint != 'students.students_owing' }}">
@@ -32,6 +35,9 @@
         {% if current_user.role in ['super_admin', 'school_admin'] %}
         <a href="{{ url_for('attendance.take_attendance') }}" class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('attendance.') }}">
             <i class="bi bi-clipboard-check"></i><span>Attendance</span>
+        </a>
+        <a href="{{ url_for('exams.list_exams') }}" class="nav-link {{ 'active' if request.blueprint == 'exams' }}">
+            <i class="bi bi-mortarboard"></i><span>Exams &amp; Results</span>
         </a>
         {% endif %}
         <a href="{{ url_for('payments.list_payments') }}" class="nav-link {{ 'active' if request.blueprint == 'payments' }}">
@@ -69,6 +75,9 @@
         </a>
         <a href="{{ url_for('admin.list_payment_types') }}" class="nav-link {{ 'active' if request.endpoint and 'payment_type' in request.endpoint }}">
             <i class="bi bi-tags"></i><span>Payment Types</span>
+        </a>
+        <a href="{{ url_for('admin.branding') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.branding' }}">
+            <i class="bi bi-award"></i><span>Branding</span>
         </a>
         <a href="{{ url_for('admin.audit_log') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.audit_log' }}">
             <i class="bi bi-journal-text"></i><span>Audit Log</span>

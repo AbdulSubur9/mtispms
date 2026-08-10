@@ -8,10 +8,11 @@ from app.extensions import db
 from app.models import Student, ClassRoom, AuditLog, Payment, School
 from app.models.user import Role
 from app.students.forms import StudentForm, StudentUploadForm
-from app.utils.decorators import write_access_required
-from app.utils.helpers import save_upload, scope_query_to_school, current_school_id, is_super_admin
+from app.utils.decorators import write_access_required, roles_required
+from app.utils.helpers import scope_query_to_school, current_school_id, is_super_admin
 from app.utils.db_safety import safe_commit
 from app.services.export_service import export_excel
+from app.services.storage_service import save_image, StorageError
 
 students_bp = Blueprint("students", __name__, template_folder="../templates/students")
 
@@ -71,7 +72,7 @@ def view_student(student_id):
 
 @students_bp.route("/create", methods=["GET", "POST"])
 @login_required
-@write_access_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN)
 def create_student():
     school_id = current_school_id()
     if school_id is None:
@@ -82,7 +83,17 @@ def create_student():
     _populate_class_choices(form, school_id)
 
     if form.validate_on_submit():
-        photo_path = save_upload(form.photo.data, subfolder="students") if form.photo.data else None
+        try:
+            photo_path = save_image(form.photo.data, subfolder="students")
+        except StorageError as exc:
+            # Previously this had no try/except at all, so any storage
+            # failure (bad path, disk permissions, corrupt/oversized image)
+            # crashed straight to a raw 500. Now the user gets the exact
+            # reason and can fix it (or retry) without losing their other
+            # form input.
+            form.photo.errors.append(exc.user_message)
+            return render_template("students/form.html", form=form, title="Add Student")
+
         student = Student(
             school_id=school_id,
             student_id=Student.generate_student_id(school_id),
@@ -111,7 +122,7 @@ def create_student():
 
 @students_bp.route("/<int:student_id>/edit", methods=["GET", "POST"])
 @login_required
-@write_access_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN)
 def edit_student(student_id):
     student = Student.query.get_or_404(student_id)
     if not is_super_admin() and student.school_id != current_school_id():
@@ -132,8 +143,12 @@ def edit_student(student_id):
         student.class_id = form.class_id.data or None
         student.admission_date = form.admission_date.data
         student.status = form.status.data
-        if form.photo.data:
-            student.photo = save_upload(form.photo.data, subfolder="students")
+        if form.photo.data and form.photo.data.filename:
+            try:
+                student.photo = save_image(form.photo.data, subfolder="students", old_reference=student.photo)
+            except StorageError as exc:
+                form.photo.errors.append(exc.user_message)
+                return render_template("students/form.html", form=form, title="Edit Student", student=student)
         if safe_commit(log_context=f"edit_student {student.id}"):
             AuditLog.log(
                 "student_updated", description=f"Student {student.student_id} updated", entity_type="student",
@@ -156,12 +171,16 @@ def delete_student(student_id):
         abort(403)
 
     student_ref = f"{student.student_id} - {student.full_name}"
+    old_photo = student.photo
     db.session.delete(student)
     if safe_commit(
         friendly_message="This student can't be deleted because they have payment records. "
                           "Deactivate the student instead to preserve financial history.",
         log_context=f"delete_student {student_id}",
     ):
+        if old_photo:
+            from app.services.storage_service import delete_file
+            delete_file(old_photo)
         AuditLog.log("student_deleted", description=f"Student {student_ref} deleted", user=current_user)
         flash("Student deleted.", "info")
     return redirect(url_for("students.list_students"))
@@ -169,7 +188,7 @@ def delete_student(student_id):
 
 @students_bp.route("/<int:student_id>/deactivate", methods=["POST"])
 @login_required
-@write_access_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN)
 def deactivate_student(student_id):
     student = Student.query.get_or_404(student_id)
     if not is_super_admin() and student.school_id != current_school_id():
@@ -186,7 +205,7 @@ def deactivate_student(student_id):
 
 @students_bp.route("/upload", methods=["GET", "POST"])
 @login_required
-@write_access_required
+@roles_required(Role.SUPER_ADMIN, Role.SCHOOL_ADMIN)
 def upload_students():
     school_id = current_school_id()
     if school_id is None and not is_super_admin():
@@ -325,19 +344,34 @@ def api_search_students():
 @students_bp.route("/owing")
 @login_required
 def students_owing():
-    """List of active students whose contributions are below what's expected
-    for the current period, with one-click WhatsApp reminder links for
-    guardians. Available to admins and collectors (the people responsible
-    for chasing payments)."""
+    """Searchable, filterable dashboard of active students and their
+    contribution status, with one-click WhatsApp reminders and a direct
+    "Record Payment" action - no need to navigate through multiple pages.
+    Available to admins, accountants, and collectors (the roles responsible
+    for chasing payments); never exposes school-wide balance/financial
+    totals to Collectors (see list_payments/list for that restriction)."""
     if current_user.role not in (Role.SUPER_ADMIN, Role.SCHOOL_ADMIN, Role.ACCOUNTANT, Role.COLLECTOR):
         abort(403)
 
     school_id = current_school_id()
     expected_amount = request.args.get("expected", type=float) or 0.0
+    search = request.args.get("q", "").strip()
+    class_id = request.args.get("class_id", type=int)
+    status_filter = request.args.get("status", "")  # '', 'owing', 'paid'
+    min_owed = request.args.get("min_owed", type=float)
 
     query = Student.query.filter(Student.status == "active")
     if school_id is not None:
         query = query.filter(Student.school_id == school_id)
+    if class_id:
+        query = query.filter(Student.class_id == class_id)
+    if search:
+        like = f"%{search}%"
+        query = query.outerjoin(ClassRoom, Student.class_id == ClassRoom.id).filter(
+            (Student.first_name.ilike(like)) | (Student.last_name.ilike(like))
+            | (Student.student_id.ilike(like)) | (Student.guardian_name.ilike(like))
+            | (Student.guardian_contact.ilike(like)) | (ClassRoom.name.ilike(like))
+        )
     students = query.order_by(Student.first_name).all()
 
     school = School.query.get(school_id) if school_id else None
@@ -345,25 +379,48 @@ def students_owing():
     for s in students:
         paid = s.total_paid
         balance = max(expected_amount - paid, 0) if expected_amount else 0
-        if not expected_amount or balance > 0:
-            message = (
-                f"Assalamu Alaikum. This is a reminder from {school.name if school else 'the Madrassa'}. "
-                f"Your child {s.first_name} has an outstanding balance"
-                + (f" of GH₵{balance:.2f}." if expected_amount else ".")
-                + " Kindly make payment at your earliest convenience. JazakAllahu Khairan."
-            )
-            whatsapp_number = "".join(ch for ch in (s.guardian_contact or "") if ch.isdigit())
-            whatsapp_url = f"https://wa.me/{whatsapp_number}?text={quote(message)}" if whatsapp_number else None
-            rows.append({
-                "student": s,
-                "paid": paid,
-                "balance": balance,
-                "whatsapp_url": whatsapp_url,
-                "has_contact": bool(whatsapp_number),
-            })
+        is_owing = bool(expected_amount) and balance > 0
+
+        if status_filter == "owing" and not is_owing:
+            continue
+        if status_filter == "paid" and (is_owing or not expected_amount):
+            continue
+        if min_owed is not None and balance < min_owed:
+            continue
+
+        last_payment = (
+            s.payments.filter(Payment.is_void.is_(False)).order_by(Payment.payment_date.desc()).first()
+        )
+
+        message = (
+            f"Assalamu Alaikum. This is a reminder from {school.name if school else 'the Madrassa'}. "
+            f"Your child {s.first_name} has an outstanding balance"
+            + (f" of GH₵{balance:.2f}." if expected_amount else ".")
+            + " Kindly make payment at your earliest convenience. JazakAllahu Khairan."
+        )
+        whatsapp_number = "".join(ch for ch in (s.guardian_contact or "") if ch.isdigit())
+        whatsapp_url = f"https://wa.me/{whatsapp_number}?text={quote(message)}" if whatsapp_number else None
+
+        rows.append({
+            "student": s,
+            "paid": paid,
+            "balance": balance,
+            "is_owing": is_owing,
+            "last_payment": last_payment,
+            "whatsapp_url": whatsapp_url,
+            "has_contact": bool(whatsapp_number),
+        })
+
+    classes_q = ClassRoom.query
+    if school_id is not None:
+        classes_q = classes_q.filter_by(school_id=school_id)
+    classes = classes_q.order_by(ClassRoom.name).all()
+
+    can_record_payment = current_user.role != Role.TEACHER
 
     return render_template(
         "students/owing.html", rows=rows, expected_amount=expected_amount,
         schools=School.query.order_by(School.name).all() if is_super_admin() else [],
-        selected_school_id=school_id,
+        selected_school_id=school_id, search=search, classes=classes, class_id=class_id,
+        status_filter=status_filter, min_owed=min_owed, can_record_payment=can_record_payment,
     )

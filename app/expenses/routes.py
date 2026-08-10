@@ -7,9 +7,10 @@ from app.models.user import Role
 from app.models.expense import ExpenseCategory
 from app.expenses.forms import ExpenseForm
 from app.utils.decorators import roles_required
-from app.utils.helpers import save_upload, scope_query_to_school, current_school_id, is_super_admin
+from app.utils.helpers import scope_query_to_school, current_school_id, is_super_admin
 from app.utils.db_safety import safe_commit
 from app.services import stats_service as stats
+from app.services.storage_service import save_document, delete_file, StorageError
 
 expenses_bp = Blueprint("expenses", __name__, template_folder="../templates/expenses")
 
@@ -18,6 +19,7 @@ EXPENSE_MANAGERS = (Role.SUPER_ADMIN, Role.SCHOOL_ADMIN, Role.ACCOUNTANT)
 
 @expenses_bp.route("/")
 @login_required
+@roles_required(*EXPENSE_MANAGERS)
 def list_expenses():
     page = request.args.get("page", 1, type=int)
     search = request.args.get("q", "").strip()
@@ -79,7 +81,14 @@ def create_expense():
                 "expenses/form.html", form=form, title="Record Expense", available_balance=available_balance
             )
 
-        receipt_path = save_upload(form.receipt_file.data, subfolder="expenses") if form.receipt_file.data else None
+        try:
+            receipt_path = save_document(form.receipt_file.data, subfolder="expenses")
+        except StorageError as exc:
+            form.receipt_file.errors.append(exc.user_message)
+            return render_template(
+                "expenses/form.html", form=form, title="Record Expense", available_balance=available_balance
+            )
+
         expense = Expense(
             school_id=school_id,
             reference_number=Expense.generate_reference_number(school_id),
@@ -151,8 +160,17 @@ def edit_expense(expense_id):
         expense.approved_by = form.approved_by.data
         expense.expense_date = form.expense_date.data
         expense.remarks = form.remarks.data
-        if form.receipt_file.data:
-            expense.receipt_file = save_upload(form.receipt_file.data, subfolder="expenses")
+        if form.receipt_file.data and form.receipt_file.data.filename:
+            old_receipt = expense.receipt_file
+            try:
+                expense.receipt_file = save_document(form.receipt_file.data, subfolder="expenses")
+            except StorageError as exc:
+                form.receipt_file.errors.append(exc.user_message)
+                return render_template(
+                    "expenses/form.html", form=form, title="Edit Expense", expense=expense, available_balance=available_balance
+                )
+            if old_receipt and old_receipt != expense.receipt_file:
+                delete_file(old_receipt)
         if safe_commit(log_context=f"edit_expense {expense_id}"):
             AuditLog.log(
                 "expense_edited", description=f"Expense {expense.reference_number} edited", entity_type="expense",
@@ -173,8 +191,11 @@ def delete_expense(expense_id):
         abort(403)
 
     ref = expense.reference_number
+    old_receipt = expense.receipt_file
     db.session.delete(expense)
     if safe_commit(log_context=f"delete_expense {expense_id}"):
+        if old_receipt:
+            delete_file(old_receipt)
         AuditLog.log("expense_deleted", description=f"Expense {ref} deleted", user=current_user)
         flash("Expense deleted.", "info")
     return redirect(url_for("expenses.list_expenses"))

@@ -4,7 +4,9 @@ from flask_login import login_user, logout_user, login_required, current_user
 from flask_mail import Message
 from app.extensions import db, mail
 from app.models import User, AuditLog
-from app.auth.forms import LoginForm, ForgotPasswordForm, ResetPasswordForm, ChangePasswordForm
+from app.auth.forms import LoginForm, ForgotPasswordForm, ResetPasswordForm, ChangePasswordForm, ProfileForm
+from app.utils.db_safety import safe_commit
+from app.services.storage_service import save_image, StorageError
 
 auth_bp = Blueprint("auth", __name__, template_folder="../templates/auth")
 
@@ -119,3 +121,48 @@ def change_password():
             return redirect(url_for("dashboard.index"))
 
     return render_template("auth/change_password.html", form=form)
+
+
+@auth_bp.route("/profile", methods=["GET", "POST"])
+@login_required
+def profile():
+    """Self-service profile management (section 18): every user can view
+    and edit their own name/phone/email/photo, and remove their photo.
+    Password changes stay on the dedicated change-password page since that
+    flow already re-verifies the current password. Uses the same secure
+    upload architecture (app.services.storage_service) as student photos
+    and school logos."""
+    form = ProfileForm(obj=current_user)
+
+    if form.validate_on_submit():
+        try:
+            new_photo = save_image(form.photo.data, subfolder="profiles", old_reference=current_user.photo)
+        except StorageError as exc:
+            form.photo.errors.append(exc.user_message)
+            return render_template("auth/profile.html", form=form)
+
+        current_user.first_name = form.first_name.data.strip()
+        current_user.last_name = form.last_name.data.strip()
+        current_user.email = form.email.data.strip().lower()
+        current_user.phone = form.phone.data
+        if new_photo:
+            current_user.photo = new_photo
+
+        if safe_commit(log_context=f"update_profile user={current_user.id}"):
+            flash("Profile updated.", "success")
+            return redirect(url_for("auth.profile"))
+
+    return render_template("auth/profile.html", form=form)
+
+
+@auth_bp.route("/profile/remove-photo", methods=["POST"])
+@login_required
+def remove_profile_photo():
+    from app.services.storage_service import delete_file
+    old_photo = current_user.photo
+    current_user.photo = None
+    if safe_commit(log_context=f"remove_profile_photo user={current_user.id}"):
+        if old_photo:
+            delete_file(old_photo)
+        flash("Profile photo removed.", "info")
+    return redirect(url_for("auth.profile"))
