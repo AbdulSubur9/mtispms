@@ -16,6 +16,21 @@
 </form>
 {% endmacro %}
 
+{% macro form_errors_banner(form) %}
+{% if form.errors %}
+<div class="alert alert-danger">
+    <strong>Please fix the following before submitting:</strong>
+    <ul class="mb-0 mt-1">
+        {% for field_name, errors in form.errors.items() %}
+            {% for error in errors %}
+            <li>{{ form[field_name].label.text }}: {{ error }}</li>
+            {% endfor %}
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+{% endmacro %}
+
 {% macro render_field(field, extra_class="") %}
 <div class="mb-3 {{ extra_class }}">
     {% if field.type != 'SubmitField' and field.type != 'BooleanField' %}

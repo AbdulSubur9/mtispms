@@ -1,9 +1,10 @@
 {% extends 'base.html' %}
-{% from 'shared/macros.html' import render_field %}
+{% from 'shared/macros.html' import render_field, form_errors_banner %}
 {% block title %}{{ title }} - {{ app_name }}{% endblock %}
 {% block content %}
 <h4 class="mb-3">{{ title }}</h4>
 <div class="card p-4" style="max-width: 720px;">
+    {{ form_errors_banner(form) }}
     <form method="POST" novalidate>
         {{ form.hidden_tag() }}
         <h6 class="text-muted small text-uppercase mt-2">Student Information</h6>
@@ -23,6 +24,13 @@
             <div class="col-md-4">{{ render_field(form.emergency_contact_phone) }}</div>
             <div class="col-md-4">{{ render_field(form.emergency_contact_relationship) }}</div>
         </div>
+
+        <h6 class="text-muted small text-uppercase mt-3">Health Information</h6>
+        {{ render_field(form.has_medical_condition) }}
+        {{ render_field(form.medical_condition_details) }}
+
+        <h6 class="text-muted small text-uppercase mt-3">Declaration</h6>
+        {{ render_field(form.declaration_accepted) }}
 
         <div class="d-flex gap-2 mt-2">
             {{ form.submit(class="btn brand-btn text-white") }}
