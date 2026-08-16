@@ -11,6 +11,9 @@ from app.models.notification import Notification
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.student_application import StudentApplication, ApplicationStatus
 from app.models.exam import Subject, GradingScaleBand, Exam, ExamSubject, Result
+from app.models.academic_year import AcademicYear, Term
+from app.models.parent import Parent, ParentStudent
+from app.models.fee_structure import FeeStructure
 
 __all__ = [
     "School",
@@ -35,4 +38,9 @@ __all__ = [
     "Exam",
     "ExamSubject",
     "Result",
+    "AcademicYear",
+    "Term",
+    "Parent",
+    "ParentStudent",
+    "FeeStructure",
 ]

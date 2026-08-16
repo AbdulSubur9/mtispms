@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h5 class="mb-0">{{ title }}</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control", placeholder="e.g. 2026/2027") }}
+            {% for err in form.name.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              {{ form.start_date.label(class="form-label") }}
+              {{ form.start_date(class="form-control", type="date") }}
+            </div>
+            <div class="col-md-6 mb-3">
+              {{ form.end_date.label(class="form-label") }}
+              {{ form.end_date(class="form-control", type="date") }}
+            </div>
+          </div>
+          <div class="form-check mb-2">
+            {{ form.is_active(class="form-check-input") }}
+            {{ form.is_active.label(class="form-check-label") }}
+          </div>
+          <div class="form-check mb-3">
+            {{ form.is_current(class="form-check-input") }}
+            {{ form.is_current.label(class="form-check-label") }}
+            <div class="form-text text-muted small">Only one year can be current at a time.</div>
+          </div>
+          <div class="d-flex justify-content-between">
+            <a href="{{ url_for('academics.years_list') }}" class="btn btn-outline-secondary">Cancel</a>
+            {{ form.submit(class="btn btn-primary") }}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

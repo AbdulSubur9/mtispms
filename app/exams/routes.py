@@ -1,4 +1,5 @@
 from datetime import date
+import io
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, send_file
 from flask_login import login_required, current_user
 from app.extensions import db
@@ -9,6 +10,7 @@ from app.utils.helpers import current_school_id, is_super_admin
 from app.utils.db_safety import safe_commit
 from app.services.results_service import compute_exam_summary, ordinal
 from app.services.export_service import generate_student_report_pdf, generate_class_result_sheet_pdf
+from openpyxl import load_workbook, Workbook
 
 exams_bp = Blueprint("exams", __name__, template_folder="../templates/exams")
 
@@ -338,3 +340,118 @@ def class_result_sheet(exam_id):
     mem = generate_class_result_sheet_pdf(exam.classroom.school, exam, summary, ordinal)
     return send_file(mem, as_attachment=True, download_name=f"{exam.name}_result_sheet.pdf".replace(" ", "_"),
                       mimetype="application/pdf")
+
+
+# ---------------------------------------------------------------------------
+# Bulk Marks Import
+# ---------------------------------------------------------------------------
+
+@exams_bp.route("/<int:exam_id>/import-marks", methods=["GET", "POST"])
+@login_required
+def import_marks(exam_id):
+    if current_user.role not in ACADEMIC_STAFF:
+        abort(403)
+    school_id = current_school_id()
+    exam = Exam.query.filter_by(id=exam_id, school_id=school_id).first_or_404()
+    if exam.status == "locked":
+        flash("Cannot import marks for a locked exam.", "danger")
+        return redirect(url_for("exams.view_exam", exam_id=exam.id))
+
+    if request.method == "POST":
+        file = request.files.get("file")
+        if not file or not file.filename.endswith((".xlsx", ".xls")):
+            flash("Please upload a valid Excel file (.xlsx)", "danger")
+            return redirect(request.url)
+
+        try:
+            wb = load_workbook(io.BytesIO(file.read()))
+            ws = wb.active
+            headers = [cell.value for cell in ws[1]]
+            required = ["Student ID", "Subject", "Marks"]
+            if not all(h in headers for h in required):
+                flash(f"Excel must have columns: {', '.join(required)}", "danger")
+                return redirect(request.url)
+
+            sid_idx = headers.index("Student ID")
+            subj_idx = headers.index("Subject")
+            marks_idx = headers.index("Marks")
+
+            imported = 0
+            errors = []
+
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                student_id_str = str(row[sid_idx]) if row[sid_idx] else None
+                subject_name = str(row[subj_idx]) if row[subj_idx] else None
+                marks = row[marks_idx]
+
+                if not student_id_str or not subject_name or marks is None:
+                    continue
+
+                student = Student.query.filter_by(school_id=school_id, student_id=student_id_str).first()
+                if not student:
+                    errors.append(f"Student '{student_id_str}' not found")
+                    continue
+
+                subject = Subject.query.filter_by(school_id=school_id, name=subject_name).first()
+                if not subject:
+                    errors.append(f"Subject '{subject_name}' not found")
+                    continue
+
+                exam_subj = ExamSubject.query.filter_by(exam_id=exam.id, subject_id=subject.id).first()
+                if not exam_subj:
+                    errors.append(f"Subject '{subject_name}' not in this exam")
+                    continue
+
+                try:
+                    marks_val = float(marks)
+                    if marks_val < 0 or marks_val > float(exam_subj.max_marks):
+                        errors.append(f"Invalid marks for {student_id_str} in {subject_name}")
+                        continue
+                except (ValueError, TypeError):
+                    errors.append(f"Non-numeric marks for {student_id_str}")
+                    continue
+
+                result = Result.query.filter_by(exam_subject_id=exam_subj.id, student_id=student.id).first()
+                if result:
+                    result.marks_obtained = marks_val
+                    result.recorded_by_id = current_user.id
+                else:
+                    result = Result(
+                        school_id=school_id,
+                        exam_subject_id=exam_subj.id,
+                        student_id=student.id,
+                        marks_obtained=marks_val,
+                        recorded_by_id=current_user.id,
+                    )
+                    db.session.add(result)
+                imported += 1
+
+            if safe_commit():
+                flash(f"Imported {imported} marks. {len(errors)} errors.", "success" if not errors else "warning")
+                for err in errors[:10]:
+                    flash(err, "warning")
+        except Exception as e:
+            flash(f"Import failed: {str(e)}", "danger")
+        return redirect(url_for("exams.view_exam", exam_id=exam.id))
+
+    return render_template("exams/import_marks.html", exam=exam)
+
+
+@exams_bp.route("/<int:exam_id>/import-template")
+@login_required
+def download_import_template(exam_id):
+    school_id = current_school_id()
+    exam = Exam.query.filter_by(id=exam_id, school_id=school_id).first_or_404()
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Marks Import"
+    ws.append(["Student ID", "Student Name", "Subject", "Marks", "Max Marks"])
+
+    for es in exam.exam_subjects:
+        for student in exam.classroom.students.filter_by(status="active").order_by(Student.first_name):
+            ws.append([student.student_id, student.full_name, es.subject.name, "", str(es.max_marks)])
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return send_file(output, download_name=f"marks_template_{exam.id}.xlsx", as_attachment=True)

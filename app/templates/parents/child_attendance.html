@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}{{ student.full_name }} — Attendance{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('parents.dashboard') }}">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('parents.child_detail', student_id=student.id) }}">{{ student.full_name }}</a></li>
+    <li class="breadcrumb-item active">Attendance</li>
+  </ol>
+</nav>
+
+<h4 class="mb-3">Attendance — {{ student.full_name }}</h4>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h2 class="text-primary mb-0">{{ total }}</h2>
+        <small class="text-muted">Total Days</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h2 class="text-success mb-0">{{ present }}</h2>
+        <small class="text-muted">Present</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h2 class="text-danger mb-0">{{ absent }}</h2>
+        <small class="text-muted">Absent</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h2 class="text-info mb-0">{{ rate }}%</h2>
+        <small class="text-muted">Attendance Rate</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-light">
+        <tr><th>Date</th><th>Status</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+        <tr>
+          <td>{{ r.date.strftime('%d %b %Y') if r.date else '-' }}</td>
+          <td>
+            {% if r.status == 'present' %}<span class="badge bg-success">Present</span>
+            {% elif r.status == 'absent' %}<span class="badge bg-danger">Absent</span>
+            {% elif r.status == 'excused' %}<span class="badge bg-warning text-dark">Excused</span>
+            {% else %}<span class="badge bg-secondary">{{ r.status|title }}</span>{% endif %}
+          </td>
+          <td class="text-muted">{{ r.notes or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="text-center text-muted py-3">No attendance records found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

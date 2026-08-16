@@ -37,6 +37,8 @@ def login():
             )
             flash(f"Welcome back, {user.first_name}!", "success")
             next_page = request.args.get("next")
+            if user.role == Role.PARENT:
+                return redirect(next_page or url_for("parents.dashboard"))
             return redirect(next_page or url_for("dashboard.index"))
 
         flash("Invalid username or password.", "danger")

@@ -15,7 +15,7 @@ class ClassRoom(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     teacher = db.relationship("User", foreign_keys=[teacher_id])
-    students = db.relationship("Student", backref="classroom", lazy="dynamic")
+    students = db.relationship("Student", back_populates="classroom", lazy="dynamic")
 
     @property
     def student_count(self):

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white"><h5 class="mb-0">{{ title }}</h5></div>
+      <div class="card-body">
+        <form method="POST">
+          {{ form.hidden_tag() }}
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              {{ form.class_id.label(class="form-label") }}
+              {{ form.class_id(class="form-select") }}
+            </div>
+            <div class="col-md-6 mb-3">
+              {{ form.payment_type_id.label(class="form-label") }}
+              {{ form.payment_type_id(class="form-select") }}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              {{ form.academic_year_id.label(class="form-label") }}
+              {{ form.academic_year_id(class="form-select") }}
+            </div>
+            <div class="col-md-6 mb-3">
+              {{ form.term_id.label(class="form-label") }}
+              {{ form.term_id(class="form-select") }}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              {{ form.amount.label(class="form-label") }}
+              {{ form.amount(class="form-control", placeholder="0.00") }}
+            </div>
+            <div class="col-md-6 mb-3">
+              {{ form.due_date.label(class="form-label") }}
+              {{ form.due_date(class="form-control", type="date") }}
+            </div>
+          </div>
+          <div class="mb-3">
+            {{ form.notes.label(class="form-label") }}
+            {{ form.notes(class="form-control", placeholder="Optional notes") }}
+          </div>
+          <div class="form-check mb-2">
+            {{ form.is_mandatory(class="form-check-input") }}
+            {{ form.is_mandatory.label(class="form-check-label") }}
+          </div>
+          <div class="form-check mb-3">
+            {{ form.is_active(class="form-check-input") }}
+            {{ form.is_active.label(class="form-check-label") }}
+          </div>
+          <div class="d-flex justify-content-between">
+            <a href="{{ url_for('fee_structures.list_fee_structures') }}" class="btn btn-outline-secondary">Cancel</a>
+            {{ form.submit(class="btn btn-primary") }}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -359,3 +359,52 @@ def generate_class_result_sheet_pdf(school, exam, summary, ordinal_fn):
     doc.build(elements)
     mem.seek(0)
     return mem
+
+
+# ---------------------------------------------------------------------------
+# Student ID Card
+# ---------------------------------------------------------------------------
+
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
+from reportlab.graphics.barcode.code128 import Code128
+
+
+def generate_student_id_card_pdf(student, school):
+    """Generate a credit-card sized student ID card (54mm x 86mm)."""
+    width, height = 86 * mm, 54 * mm
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=(width, height))
+
+    # Background
+    c.setFillColorRGB(0.97, 0.97, 0.97)
+    c.rect(0, 0, width, height, fill=1, stroke=0)
+
+    # School header bar
+    c.setFillColorRGB(0.1, 0.3, 0.6)
+    c.rect(0, height - 12 * mm, width, 12 * mm, fill=1, stroke=0)
+    c.setFillColorRGB(1, 1, 1)
+    c.setFont("Helvetica-Bold", 8)
+    c.drawCentredString(width / 2, height - 8 * mm, school.name[:35])
+
+    # Photo area
+    photo_y = height - 38 * mm
+    c.setStrokeColorRGB(0.7, 0.7, 0.7)
+    c.rect(3 * mm, photo_y, 20 * mm, 25 * mm, fill=0, stroke=1)
+
+    # Student details
+    c.setFillColorRGB(0.1, 0.1, 0.1)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(26 * mm, height - 18 * mm, student.full_name[:28])
+    c.setFont("Helvetica", 7)
+    c.drawString(26 * mm, height - 23 * mm, f"ID: {student.student_id}")
+    c.drawString(26 * mm, height - 27 * mm, f"Class: {student.classroom.name if student.classroom else 'N/A'}")
+    c.drawString(26 * mm, height - 31 * mm, f"DOB: {student.date_of_birth.strftime('%d/%m/%Y') if student.date_of_birth else 'N/A'}")
+
+    # Barcode
+    barcode = Code128(student.student_id, barWidth=0.3 * mm, barHeight=6 * mm)
+    barcode.drawOn(c, 26 * mm, 4 * mm)
+
+    c.save()
+    buf.seek(0)
+    return buf

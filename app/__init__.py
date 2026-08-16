@@ -44,6 +44,9 @@ def create_app(config_name=None):
     from app.applications.routes import applications_bp
     from app.notifications.routes import notifications_bp
     from app.exams.routes import exams_bp
+    from app.academics.routes import academics_bp
+    from app.fee_structures.routes import fee_structures_bp
+    from app.parents.routes import parents_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(dashboard_bp, url_prefix="/")
@@ -59,6 +62,9 @@ def create_app(config_name=None):
     app.register_blueprint(applications_bp, url_prefix="/applications")
     app.register_blueprint(notifications_bp, url_prefix="/notifications")
     app.register_blueprint(exams_bp, url_prefix="/exams")
+    app.register_blueprint(academics_bp, url_prefix="/academics")
+    app.register_blueprint(fee_structures_bp, url_prefix="/fee-structures")
+    app.register_blueprint(parents_bp, url_prefix="/parents")
 
     # ---- Context processors ----
     @app.context_processor

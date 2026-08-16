@@ -12,15 +12,17 @@ class Role:
     ACCOUNTANT = "accountant"
     COLLECTOR = "collector"
     TEACHER = "teacher"
+    PARENT = "parent"
 
-    ALL = [SUPER_ADMIN, SCHOOL_ADMIN, ACCOUNTANT, COLLECTOR, TEACHER]
+    ALL = [SUPER_ADMIN, SCHOOL_ADMIN, ACCOUNTANT, COLLECTOR, TEACHER, PARENT]
 
     LABELS = {
         SUPER_ADMIN: "Super Admin",
         SCHOOL_ADMIN: "School Admin",
         ACCOUNTANT: "Accountant",
         COLLECTOR: "Collector",
-        TEACHER: "Teacher (Read Only)",
+        TEACHER: "Teacher",
+        PARENT: "Parent",
     }
 
 

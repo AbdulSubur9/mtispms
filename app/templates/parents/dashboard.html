@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Parent Dashboard{% endblock %}
+{% block content %}
+<div class="mb-4">
+  <h2 class="h4 mb-1">Welcome, {{ parent.full_name }}</h2>
+  <p class="text-muted mb-0">View your children's academic progress, attendance, and payments.</p>
+</div>
+
+{% if children %}
+<div class="row g-4">
+  {% for child in children %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-3">
+          {% if child.photo %}
+          <img src="{{ url_for('static', filename='uploads/' ~ child.photo) }}" class="rounded-circle me-3" width="56" height="56" style="object-fit:cover;">
+          {% else %}
+          <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width:56px;height:56px;font-size:22px;">
+            {{ child.first_name[0] }}{{ child.last_name[0] }}
+          </div>
+          {% endif %}
+          <div>
+            <h5 class="mb-0">{{ child.full_name }}</h5>
+            <small class="text-muted">{{ child.student_id }} · {{ child.classroom.name if child.classroom else 'No class' }}</small>
+          </div>
+        </div>
+        <div class="d-grid gap-2">
+          <a href="{{ url_for('parents.child_detail', student_id=child.id) }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-person me-1"></i>Profile
+          </a>
+          <a href="{{ url_for('parents.child_results', student_id=child.id) }}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-journal-check me-1"></i>Results
+          </a>
+          <a href="{{ url_for('parents.child_attendance', student_id=child.id) }}" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-calendar-check me-1"></i>Attendance
+          </a>
+          <a href="{{ url_for('parents.child_payments', student_id=child.id) }}" class="btn btn-outline-warning btn-sm">
+            <i class="bi bi-cash-coin me-1"></i>Payments
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">No children are linked to your account. Please contact the school administration.</div>
+{% endif %}
+{% endblock %}

@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from openpyxl import load_workbook
 from app.extensions import db
-from app.models import Student, ClassRoom, AuditLog, Payment, School
+from app.models import Student, ClassRoom, AuditLog, Payment, School, AcademicYear
 from app.models.user import Role
 from app.students.forms import StudentForm, StudentUploadForm
 from app.utils.decorators import write_access_required, roles_required
@@ -424,3 +424,81 @@ def students_owing():
         selected_school_id=school_id, search=search, classes=classes, class_id=class_id,
         status_filter=status_filter, min_owed=min_owed, can_record_payment=can_record_payment,
     )
+
+
+# ---------------------------------------------------------------------------
+# Student Promotion
+# ---------------------------------------------------------------------------
+
+@students_bp.route('/promote', methods=['GET', 'POST'])
+@login_required
+def promote_students():
+    if current_user.role not in [Role.SUPER_ADMIN, Role.SCHOOL_ADMIN]:
+        flash("Permission denied.", "danger")
+        return redirect(url_for("dashboard.index"))
+    school_id = current_school_id()
+    classes = ClassRoom.query.filter_by(school_id=school_id, is_active=True).order_by(ClassRoom.name).all()
+    years = AcademicYear.query.filter_by(school_id=school_id, is_active=True).order_by(AcademicYear.start_date.desc()).all()
+
+    if request.method == "POST":
+        from_class_id = request.form.get("from_class_id", type=int)
+        to_class_id = request.form.get("to_class_id", type=int)
+        year_id = request.form.get("academic_year_id", type=int)
+        action = request.form.get("action")
+
+        if not from_class_id or not to_class_id or not year_id:
+            flash("Please select all required fields.", "danger")
+            return redirect(request.url)
+
+        student_ids = request.form.getlist("student_ids")
+        if not student_ids:
+            flash("No students selected.", "warning")
+            return redirect(request.url)
+
+        count = 0
+        for sid in student_ids:
+            student = Student.query.filter_by(id=sid, school_id=school_id, class_id=from_class_id).first()
+            if not student:
+                continue
+            if action == "promote":
+                student.class_id = to_class_id
+                student.academic_year_id = year_id
+                student.promotion_status = "promoted"
+            elif action == "repeat":
+                student.promotion_status = "repeated"
+            elif action == "graduate":
+                student.status = "graduated"
+                student.promotion_status = "graduated"
+            count += 1
+
+        if safe_commit():
+            flash(f"{count} students {action}d successfully.", "success")
+        return redirect(url_for("students.list_students"))
+
+    return render_template("students/promote.html", classes=classes, years=years)
+
+
+@students_bp.route('/promote/load-students', methods=['POST'])
+@login_required
+def load_students_for_promotion():
+    if current_user.role not in [Role.SUPER_ADMIN, Role.SCHOOL_ADMIN]:
+        return ""
+    school_id = current_school_id()
+    class_id = request.form.get("class_id", type=int)
+    students = Student.query.filter_by(school_id=school_id, class_id=class_id, status="active").order_by(Student.first_name).all()
+    return render_template("students/_promotion_students.html", students=students)
+
+
+# ---------------------------------------------------------------------------
+# Student ID Card
+# ---------------------------------------------------------------------------
+
+@students_bp.route('/<int:id>/id-card')
+@login_required
+def student_id_card(id):
+    school_id = current_school_id()
+    student = Student.query.filter_by(id=id, school_id=school_id).first_or_404()
+    school = School.query.get(school_id)
+    from app.services.export_service import generate_student_id_card_pdf
+    pdf = generate_student_id_card_pdf(student, school)
+    return send_file(pdf, download_name=f"id_card_{student.student_id}.pdf", as_attachment=True)

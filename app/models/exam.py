@@ -66,15 +66,30 @@ class Exam(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     school_id = db.Column(db.Integer, db.ForeignKey("schools.id"), nullable=False)
     class_id = db.Column(db.Integer, db.ForeignKey("classes.id"), nullable=False)
+    academic_year_id = db.Column(db.Integer, db.ForeignKey("academic_years.id"), nullable=False)
+    term_id = db.Column(db.Integer, db.ForeignKey("terms.id"), nullable=False)
     created_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 
     name = db.Column(db.String(150), nullable=False)  # e.g. "First Term Examination 2026"
-    exam_date = db.Column(db.Date)
-    is_published = db.Column(db.Boolean, default=False)  # results hidden from non-authors until published
+    exam_type = db.Column(db.String(50), default="Examination")  # Exam, Test, Quiz, etc.
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+    description = db.Column(db.Text)
+    status = db.Column(db.String(20), default="draft")  # draft, published, locked
+    is_published = db.Column(db.Boolean, default=False)  # deprecated: use status instead
+    published_at = db.Column(db.DateTime)
+    published_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    locked_at = db.Column(db.DateTime)
+    locked_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     classroom = db.relationship("ClassRoom", foreign_keys=[class_id])
+    academic_year = db.relationship("AcademicYear", foreign_keys=[academic_year_id])
+    term = db.relationship("Term", foreign_keys=[term_id])
     created_by = db.relationship("User", foreign_keys=[created_by_id])
+    published_by = db.relationship("User", foreign_keys=[published_by_id])
+    locked_by = db.relationship("User", foreign_keys=[locked_by_id])
     exam_subjects = db.relationship("ExamSubject", backref="exam", lazy="dynamic", cascade="all, delete-orphan")
 
     def __repr__(self):

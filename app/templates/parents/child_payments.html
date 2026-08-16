@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ student.full_name }} — Payments{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('parents.dashboard') }}">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('parents.child_detail', student_id=student.id) }}">{{ student.full_name }}</a></li>
+    <li class="breadcrumb-item active">Payments</li>
+  </ol>
+</nav>
+
+<h4 class="mb-3">Payment History — {{ student.full_name }}</h4>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h3 class="text-success mb-0">GH₵{{ "%.2f"|format(total_paid) }}</h3>
+        <small class="text-muted">Total Paid</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-light">
+        <tr><th>Date</th><th>Type</th><th>Amount</th><th>Receipt</th><th>Collector</th></tr>
+      </thead>
+      <tbody>
+        {% for p in payments %}
+        <tr>
+          <td>{{ p.payment_date.strftime('%d %b %Y') if p.payment_date else '-' }}</td>
+          <td>{{ p.payment_type|replace('_',' ')|title }}</td>
+          <td><strong>GH₵{{ "%.2f"|format(p.amount|float) }}</strong></td>
+          <td>
+            {% if p.receipt %}
+            <a href="{{ url_for('payments.receipt', receipt_number=p.receipt.receipt_number) }}" class="badge bg-primary text-decoration-none">{{ p.receipt.receipt_number }}</a>
+            {% else %}-{% endif %}
+          </td>
+          <td>{{ p.collector.full_name if p.collector else '-' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted py-3">No payment records found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

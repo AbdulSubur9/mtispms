@@ -20,6 +20,12 @@
             <i class="bi bi-mortarboard"></i><span>Exams &amp; Results</span>
         </a>
 
+        {% elif current_user.role == 'parent' %}
+        {# ---------------- Parent Portal ---------------- #}
+        <a href="{{ url_for('parents.dashboard') }}" class="nav-link {{ 'active' if request.blueprint == 'parents' }}">
+            <i class="bi bi-people"></i><span>My Children</span>
+        </a>
+
         {% else %}
         <a href="{{ url_for('students.list_students') }}" class="nav-link {{ 'active' if request.blueprint == 'students' and request.endpoint != 'students.students_owing' }}">
             <i class="bi bi-people"></i><span>Students</span>
@@ -64,6 +70,13 @@
         </a>
 
         {% if current_user.role in ['super_admin', 'school_admin'] %}
+        <div class="sidebar-heading">Academics</div>
+        <a href="{{ url_for('academics.years_list') }}" class="nav-link {{ 'active' if request.blueprint == 'academics' }}">
+            <i class="bi bi-calendar-range"></i><span>Academic Years</span>
+        </a>
+        <a href="{{ url_for('fee_structures.list_fee_structures') }}" class="nav-link {{ 'active' if request.blueprint == 'fee_structures' }}">
+            <i class="bi bi-cash-stack"></i><span>Fee Structures</span>
+        </a>
         <div class="sidebar-heading">Administration</div>
         {% if current_user.role == 'super_admin' %}
         <a href="{{ url_for('admin.list_schools') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.list_schools' }}">

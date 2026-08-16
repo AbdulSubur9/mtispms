@@ -16,6 +16,7 @@ class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     school_id = db.Column(db.Integer, db.ForeignKey("schools.id"), nullable=False)
     class_id = db.Column(db.Integer, db.ForeignKey("classes.id"), nullable=True)
+    academic_year_id = db.Column(db.Integer, db.ForeignKey("academic_years.id"), nullable=True)
 
     student_id = db.Column(db.String(20), nullable=False, index=True)  # STU-0001 (unique within school)
     first_name = db.Column(db.String(80), nullable=False)
@@ -24,16 +25,22 @@ class Student(db.Model):
     date_of_birth = db.Column(db.Date)
     guardian_name = db.Column(db.String(120))
     guardian_contact = db.Column(db.String(30))
+    guardian_email = db.Column(db.String(120))
     admission_date = db.Column(db.Date, default=date.today)
     photo = db.Column(db.String(250))
-    status = db.Column(db.String(20), default="active")  # active / inactive / deactivated
+    status = db.Column(db.String(20), default="active")  # active / inactive / deactivated / graduated
+    promotion_status = db.Column(db.String(20), default="pending")  # pending, promoted, repeated, graduated
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    classroom = db.relationship("ClassRoom", back_populates="students", foreign_keys=[class_id])
+    academic_year = db.relationship("AcademicYear", foreign_keys=[academic_year_id])
     payments = db.relationship("Payment", backref="student", lazy="dynamic")
     applications = db.relationship("StudentApplication", backref="student", lazy="dynamic")
     attendance_records = db.relationship("Attendance", backref="student", lazy="dynamic")
+    parent_links = db.relationship("ParentStudent", back_populates="student", lazy="dynamic")
+    results = db.relationship("Result", backref="student", lazy="dynamic")
 
     @property
     def full_name(self):
