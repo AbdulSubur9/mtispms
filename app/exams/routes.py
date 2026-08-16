@@ -3,7 +3,10 @@ import io
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, send_file
 from flask_login import login_required, current_user
 from app.extensions import db
-from app.models import ClassRoom, Subject, Exam, ExamSubject, Result, GradingScaleBand, AuditLog, Student
+from app.models import (
+    ClassRoom, Subject, Exam, ExamSubject, Result, GradingScaleBand, AuditLog, Student,
+    AcademicYear, Term,
+)
 from app.models.user import Role
 from app.exams.forms import SubjectForm, ExamForm, GradingBandForm
 from app.utils.helpers import current_school_id, is_super_admin
@@ -192,6 +195,24 @@ def create_exam():
     classes = _teacher_classes()
     form.class_id.choices = [(c.id, c.name) for c in classes]
 
+    academic_years = AcademicYear.query.filter_by(school_id=school_id).order_by(AcademicYear.start_date.desc()).all()
+    terms = Term.query.filter_by(school_id=school_id).order_by(Term.start_date.desc()).all()
+    if not academic_years or not terms:
+        flash("Set up an academic year and term before creating an examination.", "warning")
+        return redirect(url_for("academics.years_list"))
+
+    form.academic_year_id.choices = [(y.id, y.name) for y in academic_years]
+    form.term_id.choices = [(t.id, f"{t.name} ({t.academic_year.name})") for t in terms]
+
+    if request.method == "GET":
+        # Default to the school's current academic year/term for convenience,
+        # while still letting the user pick a different one (e.g. to create
+        # an exam for an upcoming term).
+        current_year = next((y for y in academic_years if y.is_current), academic_years[0])
+        current_term = next((t for t in terms if t.is_current), terms[0])
+        form.academic_year_id.data = current_year.id
+        form.term_id.data = current_term.id
+
     subjects = Subject.query.filter_by(school_id=school_id, is_active=True).order_by(Subject.name).all()
     if not subjects:
         flash("Create at least one subject before creating an examination.", "warning")
@@ -208,7 +229,10 @@ def create_exam():
 
         exam = Exam(
             school_id=school_id, class_id=classroom.id, created_by_id=current_user.id,
-            name=form.name.data.strip(), exam_date=form.exam_date.data,
+            academic_year_id=form.academic_year_id.data, term_id=form.term_id.data,
+            name=form.name.data.strip(), exam_type=form.exam_type.data,
+            start_date=form.start_date.data, end_date=form.end_date.data,
+            description=form.description.data,
         )
         db.session.add(exam)
         db.session.flush()

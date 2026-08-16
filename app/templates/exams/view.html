@@ -5,7 +5,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
         <h4 class="mb-0">{{ exam.name }}</h4>
-        <p class="text-muted small mb-0">{{ exam.classroom.name }} &middot; {{ exam.exam_date or 'No date set' }}</p>
+        <p class="text-muted small mb-0">{{ exam.classroom.name }} &middot; {{ exam.start_date or 'No date set' }}</p>
     </div>
     <div class="d-flex gap-2">
         <a href="{{ url_for('exams.class_result_sheet', exam_id=exam.id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Class Result Sheet</a>

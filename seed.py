@@ -22,6 +22,7 @@ from app.extensions import db
 from app.models import (
     School, User, Student, ClassRoom, Payment, Expense, AuditLog, Notification,
     SchoolPaymentType, Attendance, StudentApplication, Subject, GradingScaleBand, Exam, ExamSubject, Result,
+    AcademicYear, Term,
 )
 from app.models.user import Role
 from app.models.payment import PaymentType
@@ -150,9 +151,29 @@ def _seed_school(name, code, address, phone, email, admin_username, admin_passwo
     for band in GradingScaleBand.default_scale_for(school.id):
         db.session.add(band)
 
+    # An Exam requires a real academic_year_id/term_id (NOT NULL) - seed a
+    # minimal current year/term for the demo school so exam creation works
+    # the same way it would for a real school that's set these up via the
+    # Academics settings pages.
+    academic_year = AcademicYear(
+        school_id=school.id, name="2025/2026",
+        start_date=date(2025, 9, 1), end_date=date(2026, 7, 31), is_current=True,
+    )
+    db.session.add(academic_year)
+    db.session.flush()
+
+    term = Term(
+        school_id=school.id, academic_year_id=academic_year.id, name="First Term",
+        start_date=date(2025, 9, 1), end_date=date(2025, 12, 20), is_current=True,
+    )
+    db.session.add(term)
+    db.session.flush()
+
     exam = Exam(
         school_id=school.id, class_id=classroom.id, created_by_id=teacher.id,
-        name="First Term Examination 2026", exam_date=date.today(),
+        academic_year_id=academic_year.id, term_id=term.id,
+        name="First Term Examination 2026", exam_type="Examination",
+        start_date=date.today(), end_date=date.today(),
     )
     db.session.add(exam)
     db.session.flush()

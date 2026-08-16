@@ -244,7 +244,7 @@ def generate_student_report_pdf(school, exam, result_row, ordinal_fn):
     student = result_row["student"]
     elements = branded_header(
         school, "Individual Academic Report",
-        subtitle=f"{exam.name}   |   Class: {exam.classroom.name}   |   Date: {exam.exam_date or '-'}",
+        subtitle=f"{exam.name}   |   Class: {exam.classroom.name}   |   Date: {exam.start_date or '-'}",
     )
 
     photo_cell = None
@@ -321,7 +321,7 @@ def generate_class_result_sheet_pdf(school, exam, summary, ordinal_fn):
 
     elements = branded_header(
         school, "Class Result Sheet",
-        subtitle=f"{exam.name}   |   Class: {exam.classroom.name}   |   Date: {exam.exam_date or '-'}",
+        subtitle=f"{exam.name}   |   Class: {exam.classroom.name}   |   Date: {exam.start_date or '-'}",
     )
 
     exam_subjects = exam.exam_subjects.all()

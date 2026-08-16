@@ -17,7 +17,7 @@
     <div class="col-md-4">
         <div class="card p-3">
             <h6 class="mb-1">{{ exam.name }}</h6>
-            <p class="text-muted small mb-2">{{ exam.classroom.name }} &middot; {{ exam.exam_date or 'No date set' }}</p>
+            <p class="text-muted small mb-2">{{ exam.classroom.name }} &middot; {{ exam.start_date or 'No date set' }}</p>
             <span class="badge bg-{{ 'success' if exam.is_published else 'secondary' }} mb-2" style="width: fit-content;">
                 {{ 'Published' if exam.is_published else 'Draft' }}
             </span>

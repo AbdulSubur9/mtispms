@@ -1,14 +1,24 @@
 {% extends 'base.html' %}
-{% from 'shared/macros.html' import render_field %}
+{% from 'shared/macros.html' import render_field, form_errors_banner %}
 {% block title %}{{ title }} - {{ app_name }}{% endblock %}
 {% block content %}
 <h4 class="mb-3">{{ title }}</h4>
 <div class="card p-4" style="max-width: 640px;">
+    {{ form_errors_banner(form) }}
     <form method="POST" novalidate>
         {{ form.hidden_tag() }}
         {{ render_field(form.name) }}
         {{ render_field(form.class_id) }}
-        {{ render_field(form.exam_date) }}
+        <div class="row">
+            <div class="col-md-6">{{ render_field(form.academic_year_id) }}</div>
+            <div class="col-md-6">{{ render_field(form.term_id) }}</div>
+        </div>
+        <div class="row">
+            <div class="col-md-4">{{ render_field(form.exam_type) }}</div>
+            <div class="col-md-4">{{ render_field(form.start_date) }}</div>
+            <div class="col-md-4">{{ render_field(form.end_date) }}</div>
+        </div>
+        {{ render_field(form.description) }}
 
         <label class="form-label small text-muted">Subjects for this Examination</label>
         <div class="border rounded p-3 mb-3">

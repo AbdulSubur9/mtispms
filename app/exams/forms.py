@@ -12,7 +12,15 @@ class SubjectForm(FlaskForm):
 class ExamForm(FlaskForm):
     name = StringField("Examination Name", validators=[DataRequired(), Length(max=150)])
     class_id = SelectField("Class", coerce=int, validators=[DataRequired()])
-    exam_date = DateField("Exam Date", validators=[Optional()])
+    academic_year_id = SelectField("Academic Year", coerce=int, validators=[DataRequired()])
+    term_id = SelectField("Term", coerce=int, validators=[DataRequired()])
+    exam_type = SelectField(
+        "Type", choices=[("Examination", "Examination"), ("Test", "Test"), ("Quiz", "Quiz")],
+        default="Examination", validators=[DataRequired()],
+    )
+    start_date = DateField("Start Date", validators=[Optional()])
+    end_date = DateField("End Date", validators=[Optional()])
+    description = TextAreaField("Description", validators=[Optional(), Length(max=2000)])
     submit = SubmitField("Create Examination")
 
 

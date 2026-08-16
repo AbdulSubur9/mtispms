@@ -1,0 +1,31 @@
+[1mdiff --cc app/models/parent.py[m
+[1mindex bfbe470,cb70072..0000000[m
+[1m--- a/app/models/parent.py[m
+[1m+++ b/app/models/parent.py[m
+[36m@@@ -27,6 -27,12 +27,15 @@@[m [mclass Parent(db.Model)[m
+  [m
+      user = db.relationship("User", foreign_keys=[user_id])[m
+      primary_student = db.relationship("Student", foreign_keys=[primary_student_id])[m
+[32m++<<<<<<< HEAD[m
+[32m++=======[m
+[32m+     # Explicit reverse side of ParentStudent.parent below (was previously[m
+[32m+     # created implicitly via backref="parent_links" on ParentStudent.parent;[m
+[32m+     # now declared explicitly here so both sides of this association-object[m
+[32m+     # relationship consistently use back_populates rather than mixing[m
+[32m+     # backref and back_populates on the same model).[m
+[32m+     parent_links = db.relationship("ParentStudent", back_populates="parent")[m
+[32m++>>>>>>> d3e6bd0 (sqlalchemy bug fixed)[m
+  [m
+      @property[m
+      def full_name(self):[m
+[36m@@@ -59,5 -65,5 +68,10 @@@[m [mclass ParentStudent(db.Model)[m
+      is_primary = db.Column(db.Boolean, default=False)[m
+      created_at = db.Column(db.DateTime, default=datetime.utcnow)[m
+  [m
+[32m++<<<<<<< HEAD[m
+[32m +    parent = db.relationship("Parent", backref="parent_links")[m
+[32m +    student = db.relationship("Student", backref="student_parent_links")[m
+[32m++=======[m
+[32m+     parent = db.relationship("Parent", back_populates="parent_links")[m
+[32m+     student = db.relationship("Student", back_populates="parent_links")[m
+[32m++>>>>>>> d3e6bd0 (sqlalchemy bug fixed)[m
