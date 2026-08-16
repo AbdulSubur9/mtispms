@@ -4,6 +4,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from flask_mail import Message
 from app.extensions import db, mail
 from app.models import User, AuditLog
+from app.models.user import Role
 from app.auth.forms import LoginForm, ForgotPasswordForm, ResetPasswordForm, ChangePasswordForm, ProfileForm
 from app.utils.db_safety import safe_commit
 from app.services.storage_service import save_image, StorageError
