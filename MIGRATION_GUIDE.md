@@ -103,3 +103,54 @@ flask db migrate -m "Multi-tenant fixes, payment types, attendance, applications
 # especially the constraint-drop/create statements described above.
 flask db upgrade
 ```
+
+---
+
+## Update — Bug fix + Parent Management pass
+
+Additive-only changes; no destructive migration, no data loss.
+
+### New table: `uploaded_files`
+
+Backs the new database-storage option for persistent uploads (fixes the
+"school logo disappears after Render restart" bug). Columns:
+`id`, `reference_key` (unique), `school_id` (FK, nullable), `original_filename`,
+`content_type`, `data` (LargeBinary), `byte_size`, `created_at`.
+
+**Nothing migrates existing local-disk files into this table automatically**
+- that's intentional. Existing `School.logo` / `Student.photo` / etc.
+values that point to local-disk paths (e.g. `"uploads/branding/xyz.png"`)
+keep resolving correctly via the local backend (the storage service now
+routes reads/deletes by the reference's own format, not just the current
+default). Only **newly uploaded** files go to the database backend once
+`STORAGE_BACKEND=database` (the new production default) is active. If you
+want to migrate old local files into the database backend too, that would
+be a one-off data migration script (read each local file, call
+`save_image()`/`save_document()` with the database backend forced, update
+the owning record) - not included here since it's optional and the
+current local files still work fine as-is.
+
+### New column: `users.must_change_password`
+
+`Boolean, default=False`. Powers the forced-password-change flow for
+newly created Parent accounts (and reusable for any future
+admin-creates-account-for-someone-else flow).
+
+### New columns: `parents.alternative_phone`
+
+Was referenced by the ticket's requested Parent Management feature set but
+missing from the existing `Parent` model - added as a nullable string
+column.
+
+### New tables: parent management has NO new tables beyond `uploaded_files`
+above - it reuses the existing `Parent` / `ParentStudent` / `User` models
+that were already present in the codebase.
+
+### Commands
+
+```bash
+flask db migrate -m "Add uploaded_files table, must_change_password flag, parent alternative_phone"
+# Review the generated migration - it should be purely additive
+# (new table + new nullable columns), with no ALTER/DROP on existing data.
+flask db upgrade
+```

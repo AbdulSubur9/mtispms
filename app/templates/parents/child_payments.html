@@ -35,9 +35,7 @@
           <td>{{ p.payment_type|replace('_',' ')|title }}</td>
           <td><strong>GH₵{{ "%.2f"|format(p.amount|float) }}</strong></td>
           <td>
-            {% if p.receipt %}
-            <a href="{{ url_for('payments.receipt', receipt_number=p.receipt.receipt_number) }}" class="badge bg-primary text-decoration-none">{{ p.receipt.receipt_number }}</a>
-            {% else %}-{% endif %}
+            <a href="{{ url_for('payments.view_receipt', payment_id=p.id) }}" class="badge bg-primary text-decoration-none">{{ p.receipt_number }}</a>
           </td>
           <td>{{ p.collector.full_name if p.collector else '-' }}</td>
         </tr>

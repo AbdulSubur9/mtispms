@@ -27,7 +27,7 @@
             <div class="col-md-6">{{ render_field(form.photo) }}</div>
         </div>
         {% if student and student.photo %}
-        <img src="{{ url_for('static', filename=student.photo) }}" class="rounded mb-3" style="width: 80px; height: 80px; object-fit: cover;">
+        <img src="{{ student.photo_url }}" class="rounded mb-3" style="width: 80px; height: 80px; object-fit: cover;">
         {% endif %}
         <div class="d-flex gap-2">
             {{ form.submit(class="btn brand-btn text-white") }}

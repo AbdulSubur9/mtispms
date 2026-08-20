@@ -113,14 +113,23 @@ def reset_password(token):
 @auth_bp.route("/change-password", methods=["GET", "POST"])
 @login_required
 def change_password():
+    if current_user.must_change_password:
+        flash("You're using a temporary password. Please set a new password to continue.", "warning")
+
     form = ChangePasswordForm()
     if form.validate_on_submit():
         if not current_user.check_password(form.current_password.data):
             flash("Current password is incorrect.", "danger")
         else:
             current_user.set_password(form.new_password.data)
+            current_user.must_change_password = False
             db.session.commit()
             flash("Password changed successfully.", "success")
+            next_page = request.args.get("next")
+            if next_page:
+                return redirect(next_page)
+            if current_user.role == Role.PARENT:
+                return redirect(url_for("parents.dashboard"))
             return redirect(url_for("dashboard.index"))
 
     return render_template("auth/change_password.html", form=form)

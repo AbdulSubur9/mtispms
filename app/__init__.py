@@ -1,7 +1,7 @@
 import os
 import logging
 from logging.handlers import RotatingFileHandler
-from flask import Flask, render_template, request, url_for
+from flask import Flask, render_template, request, url_for, redirect
 from flask_login import current_user
 from config import config_by_name
 from app.extensions import db, migrate, login_manager, csrf, mail
@@ -47,6 +47,8 @@ def create_app(config_name=None):
     from app.academics.routes import academics_bp
     from app.fee_structures.routes import fee_structures_bp
     from app.parents.routes import parents_bp
+    from app.files.routes import files_bp
+    from app.parent_management.routes import parent_management_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(dashboard_bp, url_prefix="/")
@@ -65,6 +67,23 @@ def create_app(config_name=None):
     app.register_blueprint(academics_bp, url_prefix="/academics")
     app.register_blueprint(fee_structures_bp, url_prefix="/fee-structures")
     app.register_blueprint(parents_bp, url_prefix="/parents")
+    app.register_blueprint(files_bp)
+    app.register_blueprint(parent_management_bp, url_prefix="/parent-management")
+
+    # ---- Forced password change enforcement ----
+    @app.before_request
+    def _enforce_password_change():
+        """A newly-created Parent (or any user) with must_change_password
+        set can't just navigate away from the change-password page to skip
+        it - every request gets redirected there until they actually
+        change it. Exempts the change-password page itself, logout, and
+        static assets so the flow doesn't lock the user out."""
+        if not current_user.is_authenticated or not current_user.must_change_password:
+            return None
+        allowed_endpoints = {"auth.change_password", "auth.logout", "static", "files.serve_file"}
+        if request.endpoint in allowed_endpoints:
+            return None
+        return redirect(url_for("auth.change_password", next=request.path))
 
     # ---- Context processors ----
     @app.context_processor

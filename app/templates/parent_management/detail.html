@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import csrf_field, delete_button %}
+{% block title %}{{ parent.full_name }} - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0">{{ parent.full_name }}</h4>
+        <p class="text-muted small mb-0">{{ parent.relationship }} &middot; {{ parent.phone }} &middot; {{ parent.email }}</p>
+    </div>
+    <form method="POST" action="{{ url_for('parent_management.toggle_active', parent_id=parent.id) }}">
+        {{ csrf_field() }}
+        <button class="btn btn-sm btn-outline-{{ 'danger' if parent.user.is_active_user else 'success' }}">
+            {{ 'Deactivate Account' if parent.user.is_active_user else 'Activate Account' }}
+        </button>
+    </form>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card p-3">
+            <h6 class="mb-3">Contact Details</h6>
+            <p class="small mb-1"><strong>Alternative Phone:</strong> {{ parent.alternative_phone or '-' }}</p>
+            <p class="small mb-1"><strong>Occupation:</strong> {{ parent.occupation or '-' }}</p>
+            <p class="small mb-1"><strong>Address:</strong> {{ parent.address or '-' }}</p>
+            <p class="small mb-1"><strong>Emergency Contact:</strong> {{ parent.emergency_contact_name or '-' }} {{ parent.emergency_contact or '' }}</p>
+            <p class="small mb-0"><strong>Account Status:</strong>
+                <span class="badge bg-{{ 'success' if parent.user.is_active_user else 'secondary' }}">{{ 'Active' if parent.user.is_active_user else 'Inactive' }}</span>
+            </p>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card p-3">
+            <h6 class="mb-3">Children</h6>
+            <table class="table table-sm">
+                <thead><tr><th>Student</th><th>ID</th><th>Class</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                    {% for link in parent.parent_links %}
+                    <tr>
+                        <td>{{ link.student.full_name }}{% if link.is_primary %} <span class="badge bg-light text-dark border">Primary</span>{% endif %}</td>
+                        <td>{{ link.student.student_id }}</td>
+                        <td>{{ link.student.classroom.name if link.student.classroom else '-' }}</td>
+                        <td><span class="badge bg-{{ 'success' if link.student.status == 'active' else 'secondary' }}">{{ link.student.status }}</span></td>
+                        <td class="text-end">
+                            <a href="{{ url_for('students.view_student', student_id=link.student.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                            <form method="POST" action="{{ url_for('parent_management.unlink_student', parent_id=parent.id, student_id=link.student.id) }}" class="d-inline" onsubmit="return confirmDelete('Unlink ' + '{{ link.student.full_name }}' + ' from this parent? The student record itself will NOT be deleted.')">
+                                {{ csrf_field() }}
+                                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle"></i> Unlink</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">No children linked yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card p-3 mt-3">
+            <h6 class="mb-2">Link a Student</h6>
+            <form method="get" class="d-flex gap-2 mb-3">
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="Search by student name or ID..." value="{{ search }}">
+                <button class="btn btn-sm btn-outline-secondary">Search</button>
+            </form>
+            {% if search %}
+            <table class="table table-sm">
+                <tbody>
+                    {% for s in search_results %}
+                    <tr>
+                        <td>{{ s.full_name }} <span class="text-muted small">({{ s.student_id }})</span></td>
+                        <td>{{ s.classroom.name if s.classroom else '-' }}</td>
+                        <td class="text-end">
+                            <form method="POST" action="{{ url_for('parent_management.link_student', parent_id=parent.id, student_id=s.id) }}">
+                                {{ csrf_field() }}
+                                <input type="hidden" name="relationship" value="{{ parent.relationship }}">
+                                <button class="btn btn-sm brand-btn text-white">Link</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="text-center text-muted py-3">No matching unlinked students found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

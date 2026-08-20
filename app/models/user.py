@@ -43,6 +43,7 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(30), nullable=False, default=Role.COLLECTOR)
 
     is_active_user = db.Column(db.Boolean, default=True)
+    must_change_password = db.Column(db.Boolean, default=False)
     last_login = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -67,6 +68,17 @@ class User(UserMixin, db.Model):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+    @property
+    def photo_url(self):
+        """Browser-loadable URL for the user's profile photo, or None -
+        see Student.photo_url / School.logo_url for why this must go
+        through the storage abstraction rather than a hardcoded static
+        path."""
+        if not self.photo:
+            return None
+        from app.services.storage_service import resolve_url
+        return resolve_url(self.photo)
 
     @property
     def role_label(self):

@@ -47,6 +47,18 @@ class Student(db.Model):
         return f"{self.first_name} {self.last_name}"
 
     @property
+    def photo_url(self):
+        """Browser-loadable URL for the student's photo, or None if they
+        don't have one. Always goes through the storage abstraction rather
+        than assuming a local-disk static path - required for the
+        database-backed storage option to work (see
+        app/services/storage_service.py)."""
+        if not self.photo:
+            return None
+        from app.services.storage_service import resolve_url
+        return resolve_url(self.photo)
+
+    @property
     def total_paid(self):
         from app.models.payment import Payment
         total = (

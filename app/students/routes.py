@@ -4,6 +4,7 @@ from urllib.parse import quote
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, abort, jsonify, current_app
 from flask_login import login_required, current_user
 from openpyxl import load_workbook
+from werkzeug.datastructures import FileStorage
 from app.extensions import db
 from app.models import Student, ClassRoom, AuditLog, Payment, School, AcademicYear
 from app.models.user import Role
@@ -143,7 +144,7 @@ def edit_student(student_id):
         student.class_id = form.class_id.data or None
         student.admission_date = form.admission_date.data
         student.status = form.status.data
-        if form.photo.data and form.photo.data.filename:
+        if isinstance(form.photo.data, FileStorage) and form.photo.data.filename:
             try:
                 student.photo = save_image(form.photo.data, subfolder="students", old_reference=student.photo)
             except StorageError as exc:

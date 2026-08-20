@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import pagination_nav %}
+{% block title %}Parents - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h4 class="mb-0">Parents</h4>
+    <a href="{{ url_for('parent_management.create_parent') }}" class="btn brand-btn text-white btn-sm"><i class="bi bi-plus-lg"></i> Add Parent</a>
+</div>
+
+<div class="card p-3 mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-8">
+            <label class="form-label small">Search by name, phone, email, or student name/ID</label>
+            <input type="text" name="q" class="form-control form-control-sm" value="{{ search }}">
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-sm brand-btn text-white w-100" type="submit">Search</button>
+        </div>
+    </form>
+</div>
+
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light"><tr><th>Name</th><th>Phone</th><th>Email</th><th>Relationship</th><th>Children</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                {% for p in parents %}
+                <tr>
+                    <td>{{ p.full_name }}</td>
+                    <td>{{ p.phone }}</td>
+                    <td>{{ p.email }}</td>
+                    <td>{{ p.relationship }}</td>
+                    <td>{{ p.parent_links|length }}</td>
+                    <td><span class="badge bg-{{ 'success' if p.user.is_active_user else 'secondary' }}">{{ 'Active' if p.user.is_active_user else 'Inactive' }}</span></td>
+                    <td class="text-end"><a href="{{ url_for('parent_management.view_parent', parent_id=p.id) }}" class="btn btn-sm btn-outline-secondary">View</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted py-4">No parents found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="mt-3">{{ pagination_nav(pagination, 'parent_management.list_parents') }}</div>
+{% endblock %}

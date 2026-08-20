@@ -59,10 +59,21 @@ class Config:
     ALLOWED_EXCEL_EXTENSIONS = {"xlsx", "xls"}
 
     # Storage backend for uploaded files (student photos, user profile
-    # photos, school logos, expense receipts). "local" writes to
-    # UPLOAD_FOLDER on this server's disk, which does NOT persist across
-    # Render deploys/restarts - see app/services/storage_service.py for the
-    # pluggable backend interface intended for S3/Cloudinary/etc.
+    # photos, school logos, expense receipts):
+    #   "local"    - writes to UPLOAD_FOLDER on this server's disk. Fast and
+    #                simple, but on Render (and similar platforms) this disk
+    #                is EPHEMERAL - uploads are wiped on every
+    #                restart/redeploy. Fine for local development only.
+    #   "database" - stores file bytes as rows in PostgreSQL (see
+    #                app/models/uploaded_file.py). Genuinely persists across
+    #                Render restarts/redeploys with zero new credentials or
+    #                paid services, since it reuses DATABASE_URL. This is
+    #                what actually fixes uploaded assets (e.g. the school
+    #                logo) "disappearing" after a restart.
+    # Add a real object-storage backend (S3/Cloudinary/etc.) later by
+    # implementing the StorageBackend interface in
+    # app/services/storage_service.py and adding a branch here - no other
+    # code needs to change.
     STORAGE_BACKEND = os.environ.get("STORAGE_BACKEND", "local")
 
 
@@ -73,6 +84,14 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     DEBUG = False
     SESSION_COOKIE_SECURE = True
+    # Render's filesystem is ephemeral, so "local" disk storage silently
+    # loses every uploaded file (school logos, student photos, ...) on the
+    # next restart/redeploy - this was the direct cause of the reported
+    # "logo disappears" bug. Default production to the database-backed
+    # backend instead, which actually persists; still overridable via the
+    # STORAGE_BACKEND env var if a real object-storage backend is wired up
+    # later.
+    STORAGE_BACKEND = os.environ.get("STORAGE_BACKEND", "database")
 
 
 class TestingConfig(Config):

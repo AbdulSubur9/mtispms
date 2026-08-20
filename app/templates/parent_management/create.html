@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import render_field, form_errors_banner %}
+{% block title %}Add Parent - {{ app_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-3">Add Parent</h4>
+<div class="card p-4" style="max-width: 640px;">
+    {{ form_errors_banner(form) }}
+    <p class="text-muted small">
+        A secure username and temporary password will be generated automatically once you submit this form.
+        The parent will be required to change it on first login.
+    </p>
+    <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="row"><div class="col-md-6">{{ render_field(form.first_name) }}</div><div class="col-md-6">{{ render_field(form.last_name) }}</div></div>
+        <div class="row"><div class="col-md-6">{{ render_field(form.email) }}</div><div class="col-md-6">{{ render_field(form.relationship) }}</div></div>
+        <div class="row"><div class="col-md-6">{{ render_field(form.phone) }}</div><div class="col-md-6">{{ render_field(form.alternative_phone) }}</div></div>
+        {{ render_field(form.occupation) }}
+        {{ render_field(form.address) }}
+        <div class="row"><div class="col-md-6">{{ render_field(form.emergency_contact_name) }}</div><div class="col-md-6">{{ render_field(form.emergency_contact) }}</div></div>
+        <div class="d-flex gap-2 mt-2">
+            {{ form.submit(class="btn brand-btn text-white") }}
+            <a href="{{ url_for('parent_management.list_parents') }}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

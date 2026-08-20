@@ -250,11 +250,10 @@ def generate_student_report_pdf(school, exam, result_row, ordinal_fn):
     photo_cell = None
     if student.photo:
         try:
-            from flask import current_app
-            import os as _os
-            photo_path = _os.path.join(current_app.static_folder, student.photo)
-            if _os.path.isfile(photo_path):
-                photo_cell = Image(photo_path, width=70, height=70)
+            from app.services.storage_service import read_file_bytes
+            data = read_file_bytes(student.photo)
+            if data:
+                photo_cell = Image(io.BytesIO(data), width=70, height=70)
         except Exception:
             photo_cell = None
     if photo_cell is None:

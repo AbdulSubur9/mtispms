@@ -86,6 +86,9 @@
         <a href="{{ url_for('admin.list_users') }}" class="nav-link {{ 'active' if request.endpoint == 'admin.list_users' }}">
             <i class="bi bi-person-badge"></i><span>Users</span>
         </a>
+        <a href="{{ url_for('parent_management.dashboard') }}" class="nav-link {{ 'active' if request.blueprint == 'parent_management' }}">
+            <i class="bi bi-people-fill"></i><span>Parents</span>
+        </a>
         <a href="{{ url_for('admin.list_payment_types') }}" class="nav-link {{ 'active' if request.endpoint and 'payment_type' in request.endpoint }}">
             <i class="bi bi-tags"></i><span>Payment Types</span>
         </a>

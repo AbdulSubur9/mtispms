@@ -23,7 +23,7 @@
         {{ render_field(form.remarks) }}
         {{ render_field(form.receipt_file) }}
         {% if expense and expense.receipt_file %}
-        <p class="small"><a href="{{ url_for('static', filename=expense.receipt_file) }}" target="_blank">View current receipt file</a></p>
+        <p class="small"><a href="{{ expense.receipt_url }}" target="_blank">View current receipt file</a></p>
         {% endif %}
         <div class="d-flex gap-2">
             {{ form.submit(class="btn brand-btn text-white") }}

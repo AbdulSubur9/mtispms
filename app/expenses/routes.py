@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
 from flask_login import login_required, current_user
+from werkzeug.datastructures import FileStorage
 from app.extensions import db
 from app.models import Expense, AuditLog, Notification
 from app.models.user import Role
@@ -160,7 +161,7 @@ def edit_expense(expense_id):
         expense.approved_by = form.approved_by.data
         expense.expense_date = form.expense_date.data
         expense.remarks = form.remarks.data
-        if form.receipt_file.data and form.receipt_file.data.filename:
+        if isinstance(form.receipt_file.data, FileStorage) and form.receipt_file.data.filename:
             old_receipt = expense.receipt_file
             try:
                 expense.receipt_file = save_document(form.receipt_file.data, subfolder="expenses")

@@ -9,6 +9,7 @@ never hard-coded. Add a new document type by importing these two functions,
 not by copy-pasting header code again.
 """
 import os
+import io
 from reportlab.lib import colors
 from reportlab.lib.units import mm
 from reportlab.platypus import Image, Paragraph, Spacer, Table, TableStyle, HRFlowable
@@ -81,18 +82,20 @@ FOOTER_STYLE = ParagraphStyle(
 )
 
 
-def _logo_path(school):
-    """Resolve the school's logo to a real filesystem path ReportLab can
-    open, or None if there isn't one / it can't be found. PDF generation
-    needs an actual file (or file-like object), not a URL - this only
-    works with the local storage backend; a future object-storage backend
-    would need to download the logo to a temp file first."""
+def _logo_image_source(school):
+    """Resolve the school's logo to something ReportLab's Image() can open
+    - a BytesIO of the actual file content, resolved through the storage
+    abstraction so this works under ANY configured backend (local disk or
+    database), not just local disk. Returns None if there's no logo or it
+    can't be read."""
     if not school or not school.logo:
         return None
     try:
-        from flask import current_app
-        path = os.path.join(current_app.static_folder, school.logo)
-        return path if os.path.isfile(path) else None
+        from app.services.storage_service import read_file_bytes
+        data = read_file_bytes(school.logo)
+        if not data:
+            return None
+        return io.BytesIO(data)
     except Exception:
         return None
 
@@ -103,10 +106,10 @@ def branded_header(school, document_title, subtitle=None, logo_max_height=22 * m
     this to any ReportLab `elements` list."""
     elements = []
 
-    logo_path = _logo_path(school)
-    if logo_path:
+    logo_source = _logo_image_source(school)
+    if logo_source:
         try:
-            img = Image(logo_path)
+            img = Image(logo_source)
             # Scale down proportionally if it's larger than our max height
             if img.drawHeight > logo_max_height:
                 ratio = logo_max_height / img.drawHeight

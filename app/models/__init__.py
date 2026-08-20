@@ -14,6 +14,7 @@ from app.models.exam import Subject, GradingScaleBand, Exam, ExamSubject, Result
 from app.models.academic_year import AcademicYear, Term
 from app.models.parent import Parent, ParentStudent
 from app.models.fee_structure import FeeStructure
+from app.models.uploaded_file import UploadedFile
 
 __all__ = [
     "School",
@@ -43,4 +44,5 @@ __all__ = [
     "Parent",
     "ParentStudent",
     "FeeStructure",
+    "UploadedFile",
 ]

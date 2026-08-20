@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% from 'shared/macros.html' import render_field, form_errors_banner %}
+{% block title %}Import Parents - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Bulk Import Parents</h4>
+    <a href="{{ url_for('parent_management.download_import_template') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-download"></i> Download Template</a>
+</div>
+
+<div class="card p-4" style="max-width: 640px;">
+    {{ form_errors_banner(form) }}
+    <p class="text-muted small">
+        Upload an Excel file with columns: <code>Parent Name</code>, <code>Phone</code>, <code>Email</code> (optional),
+        <code>Relationship</code> (optional), <code>Student ID</code>. Each row creates one parent account and
+        links it to the given student. Secure temporary passwords are generated automatically - nothing is shown
+        here in plaintext except in the one-time reveal when creating a single parent.
+    </p>
+    <form method="POST" enctype="multipart/form-data" novalidate>
+        {{ form.hidden_tag() }}
+        {{ render_field(form.file) }}
+        <div class="d-flex gap-2">
+            {{ form.submit(class="btn brand-btn text-white") }}
+            <a href="{{ url_for('parent_management.list_parents') }}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% if results %}
+<div class="row g-3 mt-1">
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 class="text-success">Created ({{ results.created|length }})</h6>
+            <ul class="small mb-0">{% for line in results.created %}<li>{{ line }}</li>{% endfor %}</ul>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 class="text-danger">Missing Students ({{ results.missing_students|length }})</h6>
+            <ul class="small mb-0">{% for line in results.missing_students %}<li>{{ line }}</li>{% endfor %}</ul>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 class="text-warning">Duplicates Skipped ({{ results.duplicates|length }})</h6>
+            <ul class="small mb-0">{% for line in results.duplicates %}<li>{{ line }}</li>{% endfor %}</ul>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 class="text-danger">Failed Rows ({{ results.failed|length }})</h6>
+            <ul class="small mb-0">{% for line in results.failed %}<li>{{ line }}</li>{% endfor %}</ul>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

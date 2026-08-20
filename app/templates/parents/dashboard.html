@@ -14,7 +14,7 @@
       <div class="card-body">
         <div class="d-flex align-items-center mb-3">
           {% if child.photo %}
-          <img src="{{ url_for('static', filename='uploads/' ~ child.photo) }}" class="rounded-circle me-3" width="56" height="56" style="object-fit:cover;">
+          <img src="{{ child.photo_url }}" class="rounded-circle me-3" width="56" height="56" style="object-fit:cover;">
           {% else %}
           <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width:56px;height:56px;font-size:22px;">
             {{ child.first_name[0] }}{{ child.last_name[0] }}

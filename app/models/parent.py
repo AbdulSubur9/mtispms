@@ -19,6 +19,7 @@ class Parent(db.Model):
     relationship = db.Column(db.String(30), default="Guardian")   # Father, Mother, Uncle, etc.
     occupation = db.Column(db.String(100))
     address = db.Column(db.String(250))
+    alternative_phone = db.Column(db.String(30))
     emergency_contact = db.Column(db.String(30))
     emergency_contact_name = db.Column(db.String(120))
 

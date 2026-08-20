@@ -54,6 +54,17 @@ class Expense(db.Model):
     def category_label(self):
         return ExpenseCategory.LABELS.get(self.category, self.category)
 
+    @property
+    def receipt_url(self):
+        """Browser-loadable URL for the uploaded receipt file, or None -
+        see Student.photo_url / School.logo_url for why this must go
+        through the storage abstraction rather than a hardcoded static
+        path."""
+        if not self.receipt_file:
+            return None
+        from app.services.storage_service import resolve_url
+        return resolve_url(self.receipt_file)
+
     @staticmethod
     def generate_reference_number(school_id):
         """Generate the next EXP-YY-NNNNN reference number, unique within this
