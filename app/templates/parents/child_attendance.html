@@ -55,7 +55,7 @@
       <tbody>
         {% for r in records %}
         <tr>
-          <td>{{ r.date.strftime('%d %b %Y') if r.date else '-' }}</td>
+          <td>{{ r.attendance_date.strftime('%d %b %Y') if r.attendance_date else '-' }}</td>
           <td>
             {% if r.status == 'present' %}<span class="badge bg-success">Present</span>
             {% elif r.status == 'absent' %}<span class="badge bg-danger">Absent</span>

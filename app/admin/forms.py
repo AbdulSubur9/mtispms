@@ -17,6 +17,9 @@ class BrandingForm(FlaskForm):
     document_footer_text = StringField(
         "Extra Footer Text (shown on printed documents)", validators=[Optional(), Length(max=250)]
     )
+    allow_parent_payment_view = BooleanField(
+        "Allow parents to view their children's payment history in the Parent Portal", default=True
+    )
     submit = SubmitField("Save Branding")
 
 

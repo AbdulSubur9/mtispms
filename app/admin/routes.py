@@ -239,6 +239,7 @@ def branding():
         school.website = form.website.data
         school.document_header_text = form.document_header_text.data
         school.document_footer_text = form.document_footer_text.data
+        school.allow_parent_payment_view = form.allow_parent_payment_view.data
 
         if safe_commit(log_context=f"update_branding school={school_id}"):
             AuditLog.log(

@@ -18,6 +18,10 @@ class School(db.Model):
     website = db.Column(db.String(200))
     document_header_text = db.Column(db.String(250))
     document_footer_text = db.Column(db.String(250))
+    # Whether parents can see their linked children's payment history in
+    # the Parent Portal - configurable per school (some schools prefer to
+    # keep financial details admin/accountant-only). Defaults to visible.
+    allow_parent_payment_view = db.Column(db.Boolean, default=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

@@ -49,6 +49,7 @@
       </div>
     </a>
   </div>
+  {% if show_payments %}
   <div class="col-md-4">
     <a href="{{ url_for('parents.child_payments', student_id=student.id) }}" class="card shadow-sm text-decoration-none h-100">
       <div class="card-body text-center">
@@ -57,5 +58,6 @@
       </div>
     </a>
   </div>
+  {% endif %}
 </div>
 {% endblock %}

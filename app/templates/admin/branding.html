@@ -36,6 +36,9 @@
                 {{ render_field(form.website) }}
                 {{ render_field(form.document_header_text) }}
                 {{ render_field(form.document_footer_text) }}
+                <hr>
+                <h6 class="text-muted small text-uppercase">Parent Portal</h6>
+                {{ render_field(form.allow_parent_payment_view) }}
                 {{ form.submit(class="btn brand-btn text-white") }}
             </form>
         </div>
